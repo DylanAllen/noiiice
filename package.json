@@ -5,10 +5,6 @@
   "author": "Dylan Allen",
   "private": true,
   "scripts": {
-    "deploy": "serverless deploy --stage dev --profile dylan",
-    "pkg": "serverless package --stage dev --profile dylan",
-    "remove": "serverless remove --stage dev --profile dylan",
-    "sync": "aws s3 sync dist/ s3://noiice --delete --profile dylan",
     "dev": "nuxt",
     "build": "nuxt build",
     "start": "nuxt start",
