@@ -1,0 +1,597 @@
+service: noiice-blog-serverless
+
+package:
+  individually: true
+
+plugins:
+  - serverless-apigw-binary
+  - serverless-domain-manager
+  - serverless-iam-roles-per-function
+  - serverless-pseudo-parameters
+  - noiiice-plugin
+  - build-apps
+
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  profile: ${opt:profile, ''}
+  secrets: ${file(secrets.json)}
+  config: ${self:provider.secrets.${self:provider.stage}}
+  region: ${self:provider.config.region}
+  versionFunctions: false
+  stackName: ${self:service}-${self:provider.stage}
+  usagePlan:
+    - BlogUser:
+        quota:
+          limit: 5000
+          offset: 2
+          period: MONTH
+        throttle:
+          burstLimit: 10
+          rateLimit: 1
+    - AdminUser:
+        quota:
+          limit: 2000
+          offset: 1
+          period: MONTH
+        throttle:
+          burstLimit: 50
+          rateLimit: 5
+  tags:
+    project: Noiiice
+  environment:
+    blogCommentsDB: ${self:provider.config.blogCommentsDB}
+    blogPostDB:  ${self:provider.config.blogPostDB}
+    region: ${self:provider.config.region}
+    identityPoolId:
+      Ref: IdentityPool
+    userPoolId:
+      Ref: UserPool
+    appClientId:
+      Ref: UserPoolClient
+    authorizedRole:
+      Fn::GetAtt: [CognitoAuthorizedRole, Arn]
+    restrictedStrings: ${self:provider.config.restrictedStrings}
+    apiPlanId: 'placeholder' #do not remove, must exist for dynamic replacement after api plan is created
+    stage: ${self:provider.stage}
+    baseUrl: ${self:provider.stage}/
+
+custom:
+  apigwBinary:
+    types:
+      - '*/*'
+  scriptHooks:
+    before:package:createDeploymentArtifacts: lambda/pkg.js
+  customDomain: #Remove this configuration if you are not deploying a custom domain
+    domainName: ${self:provider.config.domain}
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+  postActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-postActions
+  commentActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-commentAction
+
+# This is for lambda function server
+layers:
+  NoiiiceModules:
+    name: ${self:service}-${self:provider.stage}-NoiiiceModules
+    path: layers
+    description: 'Node modules for Noiiice Blog'
+    compatibleRuntimes: # optional, a list of runtimes this layer is compatible with
+      - nodejs8.10
+    retain: false
+
+functions:
+  nuxt:
+    handler: index.nuxt
+    package:
+      exclude:
+        - "**/*"
+      include:
+        - nuxt.config.js
+        - nuxt.js
+        - index.js
+        - package.json
+        - secrets.json
+        - binaryMimeTypes.js
+        - apps/app/config.js
+        - .nuxt/**
+
+    layers:
+      # - arn:aws:lambda:us-east-1:378603488134:layer:NoiiiceStaticLayer:2
+      - {Ref: NoiiiceModulesLambdaLayer}
+    events:
+      - http: ANY /
+      - http: ANY /{proxy+}
+
+  postActions:
+    handler: postActions.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/postActions/postActions.zip
+    iamRoleStatementsName: NoiiceLambdaRolePostActions-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:PutItem
+          - dynamodb:GetItem
+          - dynamodb:DeleteItem
+          - dynamodb:DescribeTable
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:BatchGetItem
+          - dynamodb:UpdateItem
+        Resource:
+          - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:provider.config.blogPostDB}*
+          - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:provider.config.blogCommentsDB}*
+    events:
+      - http:
+          path: /api/blog/post
+          method: post
+          private: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+      - http:
+          path: /api/blog/delete/{uid}
+          method: post
+          private: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              paths:
+                uid: true
+
+  commentActions:
+    handler: commentActions.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/commentActions/commentActions.zip
+    iamRoleStatementsName: NoiiceLambdaRoleCommentActions-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:PutItem
+          - dynamodb:GetItem
+          - dynamodb:DeleteItem
+          - dynamodb:DescribeTable
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:BatchGetItem
+          - dynamodb:UpdateItem
+        Resource: arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:provider.config.blogCommentsDB}*
+    events:
+      - http:
+          path: /api/comment/post
+          method: post
+          private: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+      - http:
+          path: /api/comment/update
+          method: put
+          private: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+      - http:
+          path: /api/comment/delete/{postuid}/{uid}
+          method: post
+          private: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              paths:
+                uid: true
+                postuid: true
+
+  getBlogPosts:
+    handler: getBlogPosts.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/getBlogPosts/getBlogPosts.zip
+    iamRoleStatementsName: NoiiceLambdaRoleGetBlog-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:DescribeTable
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:BatchGetItem
+        Resource: arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:provider.config.blogPostDB}*
+    events:
+      - http:
+          path: /api/blog/get
+          cors: true
+          method: get
+
+  getComments:
+    handler: getComments.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/getComments/getComments.zip
+    iamRoleStatementsName: NoiiceLambdaRoleGetComments-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:DescribeTable
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:BatchGetItem
+        Resource: arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:provider.config.blogCommentsDB}*
+    events:
+      - http:
+          path: /api/comment/get/{uid}
+          cors: true
+          method: get
+          request:
+            parameters:
+              paths:
+                uid: true
+      - http:
+          path: /api/comment/getall
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  upload:
+    handler: upload.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/upload/upload.zip
+    iamRoleStatementsName: NoiiceLambdaRoleUpload-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - s3:PutObject
+          - s3:PutObjectAcl
+          - s3:ListBucket
+          - s3:GetObject
+        Resource: "arn:aws:s3:::${self:provider.config.mediaBucket}"
+      - Effect: "Allow"
+        Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+        Resource: "arn:aws:logs:*:*:*"
+    events:
+      - http:
+          path: /api/upload
+          cors: true
+          method: post
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+  setup:
+    handler: setup.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/setup/setup.zip
+    iamRoleStatementsName: NoiiceLambdaRoleSetup-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - cognito-identity:*
+        Resource: "arn:aws:cognito-identity:#{AWS::Region}:#{AWS::AccountId}:identitypool/*"
+      - Effect: "Allow"
+        Action:
+          - iam:PassRole
+        Resource:
+          Fn::GetAtt: [CognitoAuthorizedRole, Arn]
+    events:
+      - http:
+          path: /api/setup
+          cors: true
+          method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  userConfirmation:
+    handler: userConfirmation.handler
+    runtime: nodejs8.10
+    package:
+      artifact: lambda/userConfirmation/userConfirmation.zip
+    iamRoleStatementsName: NoiiceLambdaUserConfirmation-${self:service}-${self:provider.stage}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - cognito-identity:*
+        Resource: "arn:aws:cognito-identity:#{AWS::Region}:#{AWS::AccountId}:identitypool/*"
+      - Effect: "Allow"
+        Action:
+          - cognito-idp:AdminUpdateUserAttributes
+        Resource: "arn:aws:cognito-idp:#{AWS::Region}:#{AWS::AccountId}:userpool/*"
+      - Effect: "Allow"
+        Action:
+          - apigateway:*
+          - apigateway:POST
+        Resource:
+          - "arn:aws:apigateway:#{AWS::Region}::/apikeys"
+          - "arn:aws:apigateway:#{AWS::Region}::/usageplans/*/keys"
+
+resources:
+  Resources:
+    BlogPostTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.config.blogPostDB}
+        AttributeDefinitions:
+        - AttributeName: uid
+          AttributeType: S
+        - AttributeName: slug
+          AttributeType: S
+        KeySchema:
+        - AttributeName: uid
+          KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+        - IndexName: slug
+          KeySchema:
+          - AttributeName: slug
+            KeyType: HASH
+          Projection:
+            NonKeyAttributes:
+            - uid
+            ProjectionType: INCLUDE
+
+    CommentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.config.blogCommentsDB}
+        AttributeDefinitions:
+        - AttributeName: postuid
+          AttributeType: S
+        - AttributeName: uid
+          AttributeType: S
+        KeySchema:
+        - AttributeName: postuid
+          KeyType: HASH
+        - AttributeName: uid
+          KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    MediaBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: PublicRead
+        BucketName: ${self:provider.config.mediaBucket}
+        WebsiteConfiguration:
+          IndexDocument: index.html
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+
+    UserPool:
+      Type: "AWS::Cognito::UserPool"
+      Properties:
+        UserPoolName: ${self:provider.config.userPool}-${self:provider.stage}
+        AutoVerifiedAttributes:
+        - email
+        MfaConfiguration: "OFF"
+        Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+        - Name: APIKey
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        LambdaConfig:
+          PostConfirmation: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-userConfirmation
+
+    UserPoolGroup:
+      Type: "AWS::Cognito::UserPoolGroup"
+      Properties:
+        GroupName: admin
+        Description: "User with admin priveleges can create/modify posts and moderate comments"
+        Precedence: 0
+        UserPoolId:
+          Ref: UserPool
+        RoleArn: arn:aws:iam::#{AWS::AccountId}:role/${self:provider.config.userPool}-AdminRole-${self:provider.stage}
+
+    UserPoolClient:
+      Type: "AWS::Cognito::UserPoolClient"
+      Properties:
+        ClientName: ${self:provider.config.userPool}-client-${self:provider.stage}
+        GenerateSecret: false
+        UserPoolId:
+          Ref: UserPool
+
+    IdentityPool:
+      Type: "AWS::Cognito::IdentityPool"
+      Properties:
+        IdentityPoolName: ${self:provider.config.userPool}Identity${self:provider.stage}
+        AllowUnauthenticatedIdentities: false
+        CognitoIdentityProviders:
+        - ClientId:
+            Ref: UserPoolClient
+          ProviderName:
+            Fn::GetAtt: [UserPool, ProviderName]
+
+    CognitoAuthorizedRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: ${self:provider.config.userPool}-AuthRole-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud":
+                    Ref: IdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": authenticated
+        Policies:
+          - PolicyName: "CognitoAuthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "lambda:InvokeFunction"
+                  Resource:
+                    - ${self:custom.postActionsArn}
+
+    AdminUserRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: ${self:provider.config.userPool}-AdminRole-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud":
+                    Ref: IdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": authenticated
+        Policies:
+          - PolicyName: "AdminCognitoAuthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "lambda:InvokeFunction"
+                  Resource:
+                    - ${self:custom.commentActionsArn}
+                    - ${self:custom.postActionsArn}
+                - Effect: "Allow"
+                  Action:
+                    - "s3:*"
+                  Resource: arn:aws:s3:::${self:provider.config.mediaBucket}/*
+
+
+    IdentityPoolRoleMapping:
+      Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+      Properties:
+        IdentityPoolId:
+          Ref: IdentityPool
+        Roles:
+          authenticated:
+            Fn::GetAtt: [CognitoAuthorizedRole, Arn]
+
+    AdminUser:
+      Type: AWS::Cognito::UserPoolUser
+      Properties:
+        DesiredDeliveryMediums:
+          - EMAIL
+        UserAttributes:
+          - Name: email
+            Value: ${self:provider.config.adminUserEmail}
+        UserPoolId: ${self:resources.Outputs.UserPoolId.Value}
+        Username: ${self:provider.config.adminUser}
+
+    AdminToGroup:
+      Type: AWS::Cognito::UserPoolUserToGroupAttachment
+      Properties:
+        GroupName: "admin"
+        UserPoolId:
+          Ref: UserPool
+        Username:
+          Ref: AdminUser
+      DependsOn: AdminUser
+
+    ApiGatewayAuthorizer:
+      DependsOn:
+        - ApiGatewayRestApi
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: cognito-authorizer
+        IdentitySource: method.request.header.Authorization
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Type: COGNITO_USER_POOLS
+        ProviderARNs:
+          - Fn::GetAtt: [UserPool, Arn]
+
+    UserConfirmationLambdaTriggerPolicy:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: lambda:InvokeFunction
+        FunctionName:
+          Fn::GetAtt: [UserConfirmationLambdaFunction, Arn]
+        Principal: "cognito-idp.amazonaws.com"
+        SourceArn:
+          Fn::GetAtt: [UserPool, Arn]
+
+  Outputs:
+    UserPoolId:
+      Value:
+        Ref: UserPool
+    UserPoolClientId:
+      Value:
+        Ref: UserPoolClient
+    IdentityPoolId:
+      Value:
+        Ref: IdentityPool
+    AuthorizedRole:
+      Value:
+        Fn::GetAtt: [CognitoAuthorizedRole, Arn]
+    AdminUserRoleOut:
+      Value:
+        Ref: AdminUserRole
+    MediaBucket:
+      Value: ${self:provider.config.mediaBucket}
+    Stage:
+      Value: ${self:provider.stage}
+    Region:
+      Value: ${self:provider.config.region}
+    Domain:
+      Value: ${self:provider.config.domain}
+    UsagePlanId:
+      Value:
+        Ref: ApiGatewayUsagePlanBlogUser
+    AdminUsagePlanId:
+      Value:
+        Ref: ApiGatewayUsagePlanAdminUser

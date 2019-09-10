@@ -1,0 +1,16 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 10
+    commands:
+      - npm install -g serverless
+      - npm ci
+      - cd layers/nodejs
+      - npm ci
+      - cd ..
+      - cd ..
+  build:
+    commands:
+      - serverless slstats --disable
+      - serverless deploy --stage prod

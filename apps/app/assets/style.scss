@@ -1,0 +1,31 @@
+// Import your stylesheet with your variables first "$base, $primary, etc. so that they will cascade to the subsequent imports"
+// @import 'themes/rounded.scss';
+.clean {
+  $darkTheme: false;
+  @import 'themes/clean.scss';
+  @import 'adminstyle.scss';
+}
+
+.cleandark {
+  $darkTheme: true;
+  @import 'themes/clean.scss';
+  @import 'adminstyle.scss';
+}
+
+.rounded {
+  @import 'themes/rounded.scss';
+  @import 'adminstyle.scss';
+}
+
+.cards {
+  @import 'themes/cards.scss';
+  @import 'adminstyle.scss';
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+// You can override the admin scss by importing a separate admin sctylesheet after the adminstyle.scss
+// Or you can overwrite the adminstyle.scss file.
+// @import 'adminstyle.scss';
