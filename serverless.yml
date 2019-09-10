@@ -1,4 +1,4 @@
-service: noiice-blog-serverless
+service: noiice
 
 package:
   individually: true
