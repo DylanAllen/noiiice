@@ -58,12 +58,16 @@ Rename `example-secrets.json` file to `secrets.json` and update the values:
 
 ``` bash
 # Create the certificate for your domain
-sls create_cert --stage dev
+sls createCert --stage dev
 ```
 
- Wait about 40 minutes for the certificate creation and verification.
+If your domain is in a hosted zone in your Route53 account, the DNS verification records will be created automatically.  Wait about 40 minutes for the certificate creation and verification.
 
- Create the API Gateway custom domain:
+If your domain is not in a Route53 hosted zone, you will receive an output in the console of the record that you need to add to your DNS to verify the certificate. You can also look up this info in AWS Certificate manager.
+
+
+
+ *Create the API Gateway custom domain:*
 ```bash
 sls create_domain --stage dev
 # Deploy the serverless stack

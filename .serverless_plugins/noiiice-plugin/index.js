@@ -4,6 +4,7 @@ const createAdminAPIKey = require("./createAdminAPIKey");
 const { findAndReplaceDependencies } = require("./lambdaUtils");
 
 const createCertificate = async (sls) => {
+  sls.cli.log('Creating certificate')
   const profile = sls.service.provider.profile;
   let credentials;
   if (sls.service.provider.profile) {
@@ -15,18 +16,18 @@ const createCertificate = async (sls) => {
       retryDelayOptions: { base: 200 }
     })
   }
+  AWS.config.credentials = credentials;
   const acm = new AWS.ACM({ region: sls.service.provider.region});
   const domain = sls.service.provider.config.domain;
   const rootDomain = domain.substring(domain.indexOf('.')+1)
+  sls.cli.log(`Domain: ${domain}`);
 
   // request cert
   const params = {
     DomainName: domain,
     ValidationMethod: "DNS"
   };
-  sls.cli.log(JSON.stringify(params));
   const cert = await acm.requestCertificate(params).promise();
-  sls.cli.log(JSON.stringify(cert));
 
   const addTagsToCertificate = (sls, domain, arn) => {
     const params = {
@@ -44,9 +45,7 @@ const createCertificate = async (sls) => {
   const describeCertificate = async (arnObj) => {
 
     const params = arnObj
-    sls.cli.log('About to describe', JSON.stringify(params));
     const cert = await acm.describeCertificate(params).promise();
-    sls.cli.log(JSON.stringify(cert, null, 2));
     return cert
   }
 
@@ -54,14 +53,13 @@ const createCertificate = async (sls) => {
     let descParams = arnObj
     let validationData = null;
     let validationCount = 0;
+    let dnsRecord = {};
 
     const describePromise = await new Promise((resolve, reject) => {
-      sls.cli.log('Describe Promise');
       const checkLoop = setInterval(async () => {
         const certDescription = await describeCertificate(descParams);
-        sls.cli.log(`Describe ${validationCount}`);
-        sls.cli.log(JSON.stringify(certDescription.Certificate, null, 2));
         if (certDescription.Certificate.DomainValidationOptions[0].ResourceRecord) {
+          dnsRecord = certDescription.Certificate.DomainValidationOptions[0].ResourceRecord;
           validationData = certDescription.Certificate.DomainValidationOptions[0].ResourceRecord;
           stopLoop();
           resolve(validationData);
@@ -77,10 +75,6 @@ const createCertificate = async (sls) => {
         clearInterval(checkLoop);
       }
     })
-    sls.cli.log('Validation data:');
-    sls.cli.log(JSON.stringify(validationData, null, 2));
-    sls.cli.log('describePromise data:');
-    sls.cli.log(JSON.stringify(describePromise, null, 2));
 
     if (validationCount >= 5 && !validationData) {
       sls.cli.log('Exceeded 5 tries to get validation options from certificate');
@@ -92,8 +86,6 @@ const createCertificate = async (sls) => {
 
     let hostedZoneId = null;
     const zones = hostedZones.HostedZones;
-    sls.cli.log('Hosted Zones:');
-    sls.cli.log(JSON.stringify(zones, null, 2));
     for (zone in zones) {
       if (zones[zone].Name === `${rootDomain}.`) {
         hostedZoneId = zones[zone].Id;
@@ -123,7 +115,10 @@ const createCertificate = async (sls) => {
     };
 
     if (!hostedZoneId) {
-      sls.cli.error(`Hosted zone for ${domain} not found`)
+      sls.cli.log(`Hosted zone for ${domain} not found`);
+      sls.cli.log(`Add the following record to the DNS for domain ${domain}`);
+      sls.cli.log(JSON.stringify(dnsRecord, null, 2));
+      return 'You can find this info in AWS Certificate Manager';
     }
     const certVerify = route53.changeResourceRecordSets(params53).promise();
     sls.cli.log(JSON.stringify(certVerify, null, 2));
@@ -193,7 +188,7 @@ class VerifyACMCertificate {
       createCert: {
         usage: 'Verify ACM Certificate',
         lifecycleEvents: [
-          'create_cert'
+          'createCert'
         ],
         options: {
           message: {}
@@ -222,7 +217,7 @@ class VerifyACMCertificate {
       'before:package:initialize': packageLambdaFunctions.bind(this, serverless),
       'after:deploy:deploy': postDeployActions.bind(this, serverless),
       'before:remove:remove': deleteMediaBucketContents.bind(this, serverless),
-      'create_cert:create_cert': createCertificate.bind(this, serverless),
+      'createCert:createCert': createCertificate.bind(this, serverless),
       'postDeployActions:createAdminKey': postDeployActions.bind(this, serverless),
       'noiiceCreateAdminApiKey:createAdminKey': createAdminAPIKey.bind(this, serverless)
     };
