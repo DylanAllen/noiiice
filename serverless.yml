@@ -5,12 +5,10 @@ package:
 
 plugins:
   - serverless-apigw-binary
-  - serverless-domain-manager
   - serverless-iam-roles-per-function
   - serverless-pseudo-parameters
   - noiiice-plugin
   - build-apps
-
 
 provider:
   name: aws
@@ -555,6 +553,25 @@ resources:
         ProviderARNs:
           - Fn::GetAtt: [UserPool, Arn]
 
+    ApiGatewayCustomDomain:
+      Type: AWS::ApiGateway::DomainName
+      Properties:
+        CertificateArn: ${self:provider.config.certificateArn}
+        DomainName: ${self:provider.config.domain}
+        EndpointConfiguration:
+          Types:
+            - EDGE
+
+    ApiGatewayBasepathMapping:
+      Type: AWS::ApiGateway::BasePathMapping
+      DependsOn: ApiGatewayCustomDomain
+      Properties:
+        BasePath: ''
+        DomainName: ${self:provider.config.domain}
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Stage: ${self:provider.stage}
+
     UserConfirmationLambdaTriggerPolicy:
       Type: AWS::Lambda::Permission
       Properties:
@@ -595,3 +612,6 @@ resources:
     AdminUsagePlanId:
       Value:
         Ref: ApiGatewayUsagePlanAdminUser
+    CloudFrontDistribution:
+      Value:
+        Fn::GetAtt: [ApiGatewayCustomDomain, DistributionDomainName]
