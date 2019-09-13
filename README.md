@@ -24,7 +24,17 @@ cd noiiice
 npm install
 ```
 
-Rename `example-secrets.json` file to `secrets.json` and update the values:
+Rename `example-secrets.json` file to `secrets.json` and update the values.
+
+- **region** - Your AWS region that you want to deploy the app into (us-east-1, us-west-2, etc.). Be aware that Cognito is not supported in all regions.
+- **blogCommentsDB & blogPostDB** - What you want to name your post and comment tables in DynamoDB.
+- **userPool** - A name for your Cognito user pool (can not contain dashes or spaces)
+- **adminUser** - A username for your admin user.
+- **adminUserEmail** - The email address for your admin user (this is where your initial password will be emailed)
+- **mediaBucket** - A name for your s3 media bucket. (Must start with a lowercase letter, no spaces)
+- **domain** - The domain for your website. You must have access to the DNS records for this domain.
+- **certificateArn** - This will be populated automatically after the certificate is created. If you already have a cert AWS Certificate Manager, you can enter the arn for that cert here and skip the `sls createCert --stage dev` step below. You will also have to verify that cert on your domain.
+- **restrictedStrings** - a comma separated list of string (no spaces between commas) of words that you do not want to be allowed in the comments of your blog. If one of these words are present in a comment, the application will not allow the comment to be created.
 
 
 ``` JSON
@@ -38,6 +48,7 @@ Rename `example-secrets.json` file to `secrets.json` and update the values:
     "adminUserEmail": "email@example.com",
     "mediaBucket": "noiicemediaDEV",
     "domain": "dev.yourdomain.com",
+    "certificateArn":"",
     "restrictedStrings": ""
   },
   "prod": {
@@ -49,6 +60,7 @@ Rename `example-secrets.json` file to `secrets.json` and update the values:
     "adminUserEmail": "email@example.com",
     "mediaBucket": "noiicemedia",
     "domain": "yourdomain.com",
+    "certificateArn":"",
     "restrictedStrings": ""
   }
 }

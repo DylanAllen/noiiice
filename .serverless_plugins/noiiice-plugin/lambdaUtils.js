@@ -1,6 +1,6 @@
 const fs = require("fs");
 const AWS = require("aws-sdk");
-let s3 = new AWS.S3();
+
 const findAndReplaceDependencies = async (functions, sls, planId) => {
   sls.cli.log('Find and replace variables');
   let credentials;

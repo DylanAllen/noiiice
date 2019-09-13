@@ -2,10 +2,14 @@ const AWS = require('aws-sdk');
 const packageLambdaFunctions = require('./package');
 const createAdminAPIKey = require("./createAdminAPIKey");
 const { findAndReplaceDependencies } = require("./lambdaUtils");
+const { addRoute53Record } = require("./route53Util");
+const fs = require('fs');
+const secrets = require('../../secrets.json');
 
 const createCertificate = async (sls) => {
   sls.cli.log('Creating certificate')
   const profile = sls.service.provider.profile;
+  const stage = sls.service.provider.stage;
   let credentials;
   if (sls.service.provider.profile) {
     credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
@@ -28,6 +32,10 @@ const createCertificate = async (sls) => {
     ValidationMethod: "DNS"
   };
   const cert = await acm.requestCertificate(params).promise();
+
+  if (cert.CertificateArn) {
+    secrets[stage].certificateArn = cert.CertificateArn
+  }
 
   const addTagsToCertificate = (sls, domain, arn) => {
     const params = {
@@ -81,48 +89,29 @@ const createCertificate = async (sls) => {
       return null
     }
 
-    const route53 = new AWS.Route53();
-    const hostedZones = await route53.listHostedZones().promise();
+    const route53Record = await addRoute53Record(
+      sls,
+      domain,
+      describePromise.Name,
+      describePromise.Value,
+      describePromise.Type
+    );
 
-    let hostedZoneId = null;
-    const zones = hostedZones.HostedZones;
-    for (zone in zones) {
-      if (zones[zone].Name === `${rootDomain}.`) {
-        hostedZoneId = zones[zone].Id;
-      }
-    }
-
-    const params53 = {
-      ChangeBatch: {
-        Changes: [
-          {
-            Action: "CREATE",
-            ResourceRecordSet: {
-              Name: describePromise.Name,
-              ResourceRecords: [
-                 {
-                Value: describePromise.Value
-               }
-              ],
-              TTL: 60,
-              Type: describePromise.Type
-            }
-          }
-        ],
-        Comment: `Verification for certificate on ${domain}`
-      },
-      HostedZoneId: hostedZoneId
-    };
-
-    if (!hostedZoneId) {
+    if (!route53Record) {
       sls.cli.log(`Hosted zone for ${domain} not found`);
       sls.cli.log(`Add the following record to the DNS for domain ${domain}`);
       sls.cli.log(JSON.stringify(dnsRecord, null, 2));
+      secrets[stage].certVerificationData = dnsRecord;
+      const newSecrets = JSON.stringify(secrets, null, 2);
+      fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets)
+      sls.cli.log('Secrets data written to secrets.json');
       return 'You can find this info in AWS Certificate Manager';
     }
+    console.log(secrets);
+    const newSecrets = JSON.stringify(secrets, null, 2);
+    fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets);
+    sls.cli.log('Secrets data written to secrets.json');
     const certVerify = route53.changeResourceRecordSets(params53).promise();
-    sls.cli.log(JSON.stringify(certVerify, null, 2));
-
     return certVerify;
   }
 
@@ -131,7 +120,6 @@ const createCertificate = async (sls) => {
 
   const verify = await verifyCertificate(sls, cert)
   sls.cli.log(JSON.stringify(verify));
-
 
   return verify
 }
@@ -155,6 +143,7 @@ const deleteMediaBucketContents = async (sls) => {
     Bucket: bucketName,
     MaxKeys: 1000
   };
+  sls.cli.log('Listing items in Media bucket');
   const objects = await s3.listObjects(params).promise();
   if (objects.Contents) {
     const contents = objects.Contents;
@@ -162,22 +151,76 @@ const deleteMediaBucketContents = async (sls) => {
       Objects: [],
       Quiet: false
     }
-    for (i in contents) {
-      keylist.Objects.push({ "Key": contents[i].Key })
+    if (contents.length) {
+      console.log(contents);
+      for (i in contents) {
+        keylist.Objects.push({ "Key": contents[i].Key })
+      }
+      const delParams = {
+        Bucket: bucketName,
+        Delete: keylist
+      }
+      sls.cli.log('Deleting items in media bucket');
+      const deleteAction = await s3.deleteObjects(delParams).promise();
+      return deleteAction;
     }
-    const delParams = {
-      Bucket: bucketName,
-      Delete: keylist
-    }
-    const deleteAction = await s3.deleteObjects(delParams).promise();
-    console.log(deleteAction);
-    return deleteAction;
+    return null;
   }
 
 }
 
+const loadCfOutput = async (stackName, region, profile) => {
+  let credentials;
+  if (profile) {
+    credentials = new AWS.SharedIniFileCredentials({profile});
+  } else {
+    credentials = new AWS.RemoteCredentials({
+      httpOptions: { timeout: 5000 }, // 5 second timeout
+      maxRetries: 10, // retry 10 times
+      retryDelayOptions: { base: 200 }
+    })
+  }
+  AWS.config.credentials = credentials;
+  const cf = new AWS.CloudFormation({ region });
+  const response = await cf.describeStacks({ StackName: stackName }).promise()
+  const outputs = response.Stacks[0].Outputs;
+  let cfOut = {};
+  outputs.forEach(o => {
+      cfOut[o.OutputKey] = o.OutputValue;
+  });
+  return cfOut;
+};
+
+const addCloudFrontRecord = async (sls) => {
+  const { stackName, region, profile } = sls.service.provider;
+  const cfOutputs = await loadCfOutput(stackName, region, profile);
+  const domain = sls.service.provider.config.domain;
+  const stage = sls.service.provider.stage;
+  const addRecord = await addRoute53Record(
+    sls,
+    domain,
+    domain,
+    cfOutputs.CloudFrontDistribution,
+    'CNAME'
+  );
+  console.log()
+  if (!addRecord) {
+    sls.cli.log('Adding CNAME to secrets.json');
+    secrets[stage].cloudFrontCNAME = {
+      Name: domain,
+      Type: 'CNAME',
+      Value: cfOutputs.CloudFrontDistribution
+    };
+    const newSecrets = JSON.stringify(secrets, null, 2);
+    return fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets);
+  }
+  sls.cli.log('returning added record');
+  return addRecord
+}
+
 const postDeployActions = async (sls) => {
   const createAdminKey = await createAdminAPIKey(sls);
+  const addCloudFrontCNAME = await addCloudFrontRecord(sls);
   return await findAndReplaceDependencies(sls.service.functions, sls, createAdminKey.UsagePlanId);
 }
 
