@@ -61,41 +61,61 @@ Rename `example-secrets.json` file to `secrets.json` and update the values:
 sls createCert --stage dev
 ```
 
-If your domain is in a hosted zone in your Route53 account, the DNS verification records will be created automatically.  Wait about 40 minutes for the certificate creation and verification.
+### If your domain is in Route53
 
-If your domain is not in a Route53 hosted zone, you will receive an output in the console of the record that you need to add to your DNS to verify the certificate. You can also look up this info in AWS Certificate manager.
+If your domain was registered through Route53 in your AWS account, the DNS verification records will be created automatically.  Wait about 40 minutes for the certificate creation and verification.
 
+### If your domain was registered elsewhere
 
+If your domain is not in Route53, you will receive an output in the console of the record that you need to add to your DNS to verify the certificate. This info will also be written to you `secrets.json` file under certVerificationData for your reference, and can be found in AWS Certificate manager. Go to your domain's DNS records and add that CNAME record. About 40 minutes after you add the CNAME your certificate will verify
 
- *Create the API Gateway custom domain:*
+## Deploy the serverless stack
 ```bash
-sls create_domain --stage dev
-# Deploy the serverless stack
 sls deploy --stage dev
 ```
 
-Wait another 40 minutes for API gateway and domain to propagate. Check your email for your admin user confirmation code, login to your app, and confirm your account! In order for this app to function (even locally) you will need the AWS assets deployed.
+If your domain is hosted in Route53, your DNS records will have been updated automatically. Wait another 40 minutes for API gateway and domain to propagate.
 
-Once the deployment is finished, you will be able to visit your site at your custom domain and the API Gateway endpoint created by the deployment.
+If your domain is hosted elsewhere, the CNAME record that you need to add to your DNS records will have been added to your `secrets.json` file under `cloudFrontCNAME`. Add that to your domain's DNS records, and in about 40 minutes, your website will be live!
 
-## Customize your development
+Check your email for your admin user password, login to your app, and reset your password.
 
-navigate to your project folder after deployment and you can run your site locally:
+## Customize your site
 
-`npm run dev`
+Navigate to your `apps/app/` after deployment and you can run your site locally:
+
+```bash
+npm run dev
+```
 
 This will start your dev server at http://localhost:3000 with hot reloading.
 
 The web app files are in `apps/app/` All of the CSS files are in the *assets* folder.
 
 You can redepoy the web app without a complete serverless deploy. You can do this by running:
-`sls buildNuxtApp --stage dev`
+
+```bash
+sls buildNuxtApp --stage dev
+```
 
 This will re-build the app and upload the results to it's lambda function. If you make updates to any other lambda functions, you can do a full re-deploy, or deploy the lambdas individually.
 
 For detailed explanation on how Nuxt works, checkout [Nuxt.js docs](https://nuxtjs.org).
 
+For more info about the serverless framework: [serverless.com](https://serverless.com)
 
+## Uninstall
+
+To remove all of your resources from AWS:
+
+```bash
+serverless remove --stage dev
+```
+This will delete all files from tour media s3 bucket, and delete all of the AWS resources created i the stack except for you Certificate.
+
+You can not delete the certificate when it is attached to a distribution, and it takes some time for the CloudFront distribution to be disabled and removed. After that completes (again, about 40 minutes) you can go into the AWS Certificate Manager console and delete the certificate.
+
+Also, your DNS records will not be automatically removed.
 
 ## Pull Requests Welcome!
 
