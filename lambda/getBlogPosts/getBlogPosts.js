@@ -7,22 +7,14 @@ const AWS = require('aws-sdk');
       TableName: process.env.blogPostDB,
   };
 
-  const resp = await dynamodb.scan(params, function(err, data) {
-     if (err) {
-       console.log(err, err.stack);
-       return err;
-     } else {
-       return data.Items;
-     }
-  }).promise();
+  const resp = await dynamodb.scan(params).promise();
 
-  console.log(resp);
   const response = {
     statusCode: 200,
     headers: {
       "Access-Control-Allow-Origin" : "*"
     },
-    body: JSON.stringify(resp)
+    body: JSON.stringify(resp.Items)
   };
   return response;
-}
+};
