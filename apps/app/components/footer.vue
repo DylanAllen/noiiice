@@ -24,7 +24,7 @@
       </a>
       |
       <a
-        href="https://github.com/DylanAllen/noiice"
+        href="https://github.com/DylanAllen/noiiice"
         target="_blank"
         class="button--grey"
       >
