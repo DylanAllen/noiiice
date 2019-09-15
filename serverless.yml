@@ -9,7 +9,7 @@ plugins:
   - serverless-pseudo-parameters
   - noiiice-plugin
   - build-apps
-    - serverless-stack-termination-protection
+  - serverless-stack-termination-protection
 
 provider:
   name: aws
