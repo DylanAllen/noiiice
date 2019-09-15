@@ -9,6 +9,7 @@ plugins:
   - serverless-pseudo-parameters
   - noiiice-plugin
   - build-apps
+    - serverless-stack-termination-protection
 
 provider:
   name: aws
@@ -68,6 +69,9 @@ custom:
     createRoute53Record: true
   postActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-postActions
   commentActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-commentAction
+  serverlessTerminationProtection:
+    stages:
+      - prod
 
 # This is for lambda function server
 layers:
