@@ -12,7 +12,7 @@
           A serverless blog platform.
         </h2>
         <p>
-          Noiiice is an open source blog platform built with the serverless framework, NuxtJS, AWS Lambda, DynamoDB, API Gateway, S3, and Cognito.
+          Noiiice is an open source blog platform built with the Serverless framework, NuxtJS, AWS Lambda, DynamoDB, API Gateway, S3, and Cognito.
         </p>
         <p>
           Ready to give it a try?
