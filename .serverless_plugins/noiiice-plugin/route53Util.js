@@ -40,7 +40,7 @@ const addRoute53Record = async (sls, provider, domain, name, value, type) => {
   sls.cli.log('changing resource record set');
   let record;
   try {
-    record = provider.request('Route53', 'changeResourceRecordSets', params53);
+    record = await provider.request('Route53', 'changeResourceRecordSets', params53);
   } catch (err) {
     sls.cli.log(err.ServerlessError.code);
     record = null
