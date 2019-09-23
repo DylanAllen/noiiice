@@ -99,8 +99,7 @@ const createCertificate = async ({ sls, provider }) => {
     const newSecrets = JSON.stringify(secrets, null, 2);
     fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets);
     sls.cli.log('Secrets data written to secrets.json');
-    const certVerify = provider.request('route53', 'changeResourceRecordSets', params53);
-    return certVerify;
+    return route53Record;
   }
 
   const addTags = await addTagsToCertificate(sls, domain, cert.CertificateArn)
