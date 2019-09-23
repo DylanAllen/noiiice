@@ -1,20 +1,6 @@
-const AWS = require('aws-sdk');
-
-const loadCfOutput = async (stackName, region, profile, sls) => {
+const loadCfOutput = async (stackName, region, profile, sls, provider) => {
     let cfOutputs = {};
-    let credentials;
-    if (sls.service.provider.profile) {
-      credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-    } else {
-      credentials = new AWS.RemoteCredentials({
-        httpOptions: { timeout: 5000 }, // 5 second timeout
-        maxRetries: 10, // retry 10 times
-        retryDelayOptions: { base: 200 }
-      })
-    }
-    AWS.config.credentials = credentials;
-    const cf = new AWS.CloudFormation({ region });
-    const response = await cf.describeStacks({ StackName: stackName }).promise()
+    const response = await provider.request('CloudFormation', 'describeStacks', { StackName: stackName });
     const outputs = response.Stacks[0].Outputs;
     outputs.forEach(o => {
         cfOutputs[o.OutputKey] = o.OutputValue;
@@ -22,20 +8,7 @@ const loadCfOutput = async (stackName, region, profile, sls) => {
     return cfOutputs;
 };
 
-const updateConfiguration = async (func, environment, sls) => {
-  AWS.config.region = sls.service.provider.region;
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const lambda = new AWS.Lambda();
+const updateConfiguration = async (func, environment, sls, provider) => {
   const params = {
     FunctionName: func.name,
     Environment: {
@@ -44,10 +17,10 @@ const updateConfiguration = async (func, environment, sls) => {
       }
     }
   };
-  await lambda.updateFunctionConfiguration(params).promise();
+  await provider.request('lambda', 'updateFunctionConfiguration', params);
 };
 
-const lambdaEnv = async (sls, outputs) => {
+const lambdaEnv = async (sls, outputs, provider) => {
   const functions = sls.service.functions;
   const funcKeys = Object.keys(functions);
   await Promise.all(
@@ -57,29 +30,17 @@ const lambdaEnv = async (sls, outputs) => {
       let environment = provider.environment;
       environment.UsagePlanId = UsagePlanId;
       environment.AdminUsagePlanId = AdminUsagePlanId;
-      await updateConfiguration(func, environment, sls);
+      await updateConfiguration(func, environment, sls, provider);
     })
   );
 }
 
-const checkUserAttributes = async (sls, userPoolId) => {
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider();
+const checkUserAttributes = async (sls, userPoolId, provider) => {
   const params = {
     UserPoolId: userPoolId,
     Username: sls.service.provider.config.adminUser
   }
-  const user = await cognitoidentityserviceprovider.adminGetUser(params).promise();
+  const user = await provider.request('CognitoIdentityServiceProvider', 'adminGetUser', params);
   for (let att in user.UserAttributes) {
     if (user.UserAttributes[att].Name === 'custom:APIKey') {
       sls.cli.log('Api Key found');
@@ -90,28 +51,13 @@ const checkUserAttributes = async (sls, userPoolId) => {
 }
 
 
-module.exports = async (sls) => {
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  AWS.config.update({
-    region: sls.service.provider.region
-  });
-  const apigateway = new AWS.APIGateway();
+module.exports = async (sls, provider) => {
   sls.cli.log('Pulling CF Outputs');
   const { stackName, region, profile } = sls.service.provider;
-  const stackOutputs = await loadCfOutput(stackName, region, profile, sls);
+  const stackOutputs = await loadCfOutput(stackName, region, profile, sls, provider);
   const userName = sls.service.provider.config.adminUser;
   sls.cli.log('Checking for API key in Admin user attributes');
-  const keyExists = await checkUserAttributes(sls, stackOutputs.UserPoolId);
+  const keyExists = await checkUserAttributes(sls, stackOutputs.UserPoolId, provider);
   if (keyExists) {
     sls.cli.log('Exiting create API action');
     return stackOutputs;
@@ -124,7 +70,7 @@ module.exports = async (sls) => {
     name: `${userName}-NoiiiceKey`,
   };
   sls.cli.log('Creating Admin API Key');
-  const apiKey = await apigateway.createApiKey(apiKeyParams).promise();
+  const apiKey = await provider.request('APIGatweay', 'createApiKey', apiKeyParams);
   console.log('Api Key:', JSON.stringify(apiKey, null, 2));
   const planKeyParams = {
     keyId: apiKey.id,
@@ -132,7 +78,7 @@ module.exports = async (sls) => {
     usagePlanId: stackOutputs.AdminUsagePlanId
   };
 
-  const planKey = await apigateway.createUsagePlanKey(planKeyParams).promise();
+  const planKey = await provider.request('APIGatweay', 'createUsagePlanKey', planKeyParams);
   sls.cli.log('Plan Key:', JSON.stringify(planKey, null, 2));
 
   const userAttributeParams = {
@@ -145,8 +91,7 @@ module.exports = async (sls) => {
     UserPoolId: stackOutputs.UserPoolId,
     Username: userName
   };
-  const cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider();
-  const userUpdate = await cognitoidentityserviceprovider.adminUpdateUserAttributes(userAttributeParams).promise();
+  const userUpdate = await provider.request('CognitoIdentityServiceProvider', 'adminUpdateUserAttributes', userAttributeParams);
   console.log('User Attribute Update', JSON.stringify(userUpdate, null, 2));
 
   return stackOutputs;

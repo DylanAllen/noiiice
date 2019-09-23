@@ -1,4 +1,3 @@
-const AWS = require('aws-sdk');
 const packageLambdaFunctions = require('./package');
 const createAdminAPIKey = require("./createAdminAPIKey");
 const { findAndReplaceDependencies } = require("./lambdaUtils");
@@ -6,22 +5,9 @@ const { addRoute53Record } = require("./route53Util");
 const fs = require('fs');
 const secrets = require('../../secrets.json');
 
-const createCertificate = async (sls) => {
+const createCertificate = async ({ sls, provider }) => {
   sls.cli.log('Creating certificate')
-  const profile = sls.service.provider.profile;
   const stage = sls.service.provider.stage;
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const acm = new AWS.ACM({ region: sls.service.provider.region});
   const domain = sls.service.provider.config.domain;
   const rootDomain = domain.substring(domain.indexOf('.')+1)
   sls.cli.log(`Domain: ${domain}`);
@@ -31,9 +17,10 @@ const createCertificate = async (sls) => {
     DomainName: domain,
     ValidationMethod: "DNS"
   };
-  const cert = await acm.requestCertificate(params).promise();
+  const cert = await provider.request('ACM', 'requestCertificate', params);
 
   if (cert.CertificateArn) {
+    console.log('Certificate created.');
     secrets[stage].certificateArn = cert.CertificateArn
   }
 
@@ -47,14 +34,14 @@ const createCertificate = async (sls) => {
         }
       ]
     };
-    return acm.addTagsToCertificate(params).promise()
+    return provider.request('ACM', 'addTagsToCertificate', params);
   };
 
   const describeCertificate = async (arnObj) => {
 
-    const params = arnObj
-    const cert = await acm.describeCertificate(params).promise();
-    return cert
+    const params = arnObj;
+    const cert = await provider.request('ACM', 'describeCertificate', params);
+    return cert;
   }
 
   const verifyCertificate = async (sls, arnObj) => {
@@ -91,6 +78,7 @@ const createCertificate = async (sls) => {
 
     const route53Record = await addRoute53Record(
       sls,
+      provider,
       domain,
       describePromise.Name,
       describePromise.Value,
@@ -111,7 +99,7 @@ const createCertificate = async (sls) => {
     const newSecrets = JSON.stringify(secrets, null, 2);
     fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets);
     sls.cli.log('Secrets data written to secrets.json');
-    const certVerify = route53.changeResourceRecordSets(params53).promise();
+    const certVerify = provider.request('route53', 'changeResourceRecordSets', params53);
     return certVerify;
   }
 
@@ -124,27 +112,14 @@ const createCertificate = async (sls) => {
   return verify
 }
 
-const deleteMediaBucketContents = async (sls) => {
-  const profile = sls.service.provider.profile;
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
+const deleteMediaBucketContents = async ({ sls, provider}) => {
   const bucketName = sls.service.provider.config.mediaBucket;
-  const s3 = new AWS.S3();
   const params = {
     Bucket: bucketName,
     MaxKeys: 1000
   };
   sls.cli.log('Listing items in Media bucket');
-  const objects = await s3.listObjects(params).promise();
+  const objects = await provider.request('s3', 'listObjects', params);
   if (objects.Contents) {
     const contents = objects.Contents;
     let keylist = {
@@ -161,7 +136,7 @@ const deleteMediaBucketContents = async (sls) => {
         Delete: keylist
       }
       sls.cli.log('Deleting items in media bucket');
-      const deleteAction = await s3.deleteObjects(delParams).promise();
+      const deleteAction = await provider.request('s3', 'deleteObjects', delParams);
       return deleteAction;
     }
     return null;
@@ -170,19 +145,7 @@ const deleteMediaBucketContents = async (sls) => {
 }
 
 const loadCfOutput = async (stackName, region, profile) => {
-  let credentials;
-  if (profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const cf = new AWS.CloudFormation({ region });
-  const response = await cf.describeStacks({ StackName: stackName }).promise()
+  const response = await provider.request( 'cf', 'describeStacks', { StackName: stackName });
   const outputs = response.Stacks[0].Outputs;
   let cfOut = {};
   outputs.forEach(o => {
@@ -191,13 +154,14 @@ const loadCfOutput = async (stackName, region, profile) => {
   return cfOut;
 };
 
-const addCloudFrontRecord = async (sls) => {
+const addCloudFrontRecord = async (sls, provider) => {
   const { stackName, region, profile } = sls.service.provider;
   const cfOutputs = await loadCfOutput(stackName, region, profile);
   const domain = sls.service.provider.config.domain;
   const stage = sls.service.provider.stage;
   const addRecord = await addRoute53Record(
     sls,
+    provider,
     domain,
     domain,
     cfOutputs.CloudFrontDistribution,
@@ -218,15 +182,17 @@ const addCloudFrontRecord = async (sls) => {
   return addRecord
 }
 
-const postDeployActions = async (sls) => {
-  const createAdminKey = await createAdminAPIKey(sls);
-  const addCloudFrontCNAME = await addCloudFrontRecord(sls);
-  return await findAndReplaceDependencies(sls.service.functions, sls, createAdminKey.UsagePlanId);
+const postDeployActions = async (sls, provider) => {
+  const createAdminKey = await createAdminAPIKey(sls, provider);
+  const addCloudFrontCNAME = await addCloudFrontRecord(sls, provider);
+  return await findAndReplaceDependencies(sls.service.functions, sls, createAdminKey.UsagePlanId, provider);
 }
 
 class VerifyACMCertificate {
-  constructor(serverless) {
+  constructor(serverless, options) {
     this.serverless = serverless;
+    this.options = options
+    this.provider = this.serverless.getProvider("aws")
     this.commands = {
       createCert: {
         usage: 'Verify ACM Certificate',
@@ -258,11 +224,11 @@ class VerifyACMCertificate {
     };
     this.hooks = {
       'before:package:initialize': packageLambdaFunctions.bind(this, serverless),
-      'after:deploy:deploy': postDeployActions.bind(this, serverless),
-      'before:remove:remove': deleteMediaBucketContents.bind(this, serverless),
-      'createCert:createCert': createCertificate.bind(this, serverless),
-      'postDeployActions:createAdminKey': postDeployActions.bind(this, serverless),
-      'noiiceCreateAdminApiKey:createAdminKey': createAdminAPIKey.bind(this, serverless)
+      'after:deploy:deploy': postDeployActions.bind(this, serverless, this.provider),
+      'before:remove:remove': deleteMediaBucketContents.bind(this, { sls: this.serverless, provider: this.provider }),
+      'createCert:createCert': createCertificate.bind(this, { sls: this.serverless, provider: this.provider }),
+      'postDeployActions:createAdminKey': postDeployActions.bind(this, serverless, this.provider),
+      'noiiceCreateAdminApiKey:createAdminKey': createAdminAPIKey.bind(this, serverless, this.provider)
     };
   }
 }

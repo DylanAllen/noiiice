@@ -1,71 +1,35 @@
 const fs = require("fs");
-const AWS = require("aws-sdk");
 
-const findAndReplaceDependencies = async (functions, sls, planId) => {
+const findAndReplaceDependencies = async (functions, sls, planId, provider) => {
   sls.cli.log('Find and replace variables');
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
   const funcKeys = Object.keys(functions);
   await Promise.all(
     funcKeys.map(async funcKey => {
       let func = functions[funcKey];
-      let environment = await getLambdaVariables(func.name, sls);
+      let environment = await getLambdaVariables(func.name, sls, provider);
       environment['apiPlanId'] = planId;
-      await updateConfiguration(func, environment, sls);
+      await updateConfiguration(func, environment, sls, provider);
     })
   );
   sls.cli.log('Lambda variables updated');
 };
 
-const getLambdaVariables = async (functionName, sls) => {
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const lambda = new AWS.Lambda();
+const getLambdaVariables = async (functionName, sls, provider) => {
   const params = {
   FunctionName: functionName
  };
- const data = await lambda.getFunctionConfiguration(params).promise();
+ const data = await provider.request('Lambda', 'getFunctionConfiguration', params);
  return data.Environment.Variables;
 }
 
-const updateConfiguration = async (func, environment, sls) => {
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const lambda = new AWS.Lambda();
+const updateConfiguration = async (func, environment, sls, provider) => {
   const params = {
     FunctionName: func.name,
     Environment: {
       Variables: environment
     }
   };
-  const lambdaupdate = await lambda.updateFunctionConfiguration(params).promise();
+  const lambdaupdate = await provider.request('Lambda', 'updateFunctionConfiguration', params);
   return lambdaupdate;
 };
 

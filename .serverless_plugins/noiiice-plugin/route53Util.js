@@ -1,23 +1,8 @@
-const AWS = require('aws-sdk');
-
-const addRoute53Record = async (sls, domain, name, value, type) => {
-  const profile = sls.service.provider.profile;
+const addRoute53Record = async (sls, provider, domain, name, value, type) => {
   const stage = sls.service.provider.stage;
   const rootDomain = domain.substring(domain.indexOf('.')+1)
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
 
-  const route53 = new AWS.Route53();
-
-  const hostedZones = await route53.listHostedZones().promise();
+  const hostedZones = await provider.request('route53', 'listHostedZones');
 
   let hostedZoneId = null;
   const zones = hostedZones.HostedZones;
@@ -54,7 +39,7 @@ const addRoute53Record = async (sls, domain, name, value, type) => {
   };
 
 
-  return route53.changeResourceRecordSets(params53).promise();
+  return provider.request('route53', 'changeResourceRecordSets', params53);
 }
 
 module.exports = {
