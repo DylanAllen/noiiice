@@ -71,7 +71,7 @@ custom:
   commentActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-commentAction
   serverlessTerminationProtection:
     stages:
-      - dev
+      - prod
 
 # This is for lambda function server
 layers:
