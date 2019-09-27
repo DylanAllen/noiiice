@@ -70,7 +70,7 @@ module.exports = async (sls, provider) => {
     name: `${userName}-NoiiiceKey`,
   };
   sls.cli.log('Creating Admin API Key');
-  const apiKey = await provider.request('APIGatweay', 'createApiKey', apiKeyParams);
+  const apiKey = await provider.request('APIGateway', 'createApiKey', apiKeyParams);
   console.log('Api Key:', JSON.stringify(apiKey, null, 2));
   const planKeyParams = {
     keyId: apiKey.id,
@@ -78,7 +78,7 @@ module.exports = async (sls, provider) => {
     usagePlanId: stackOutputs.AdminUsagePlanId
   };
 
-  const planKey = await provider.request('APIGatweay', 'createUsagePlanKey', planKeyParams);
+  const planKey = await provider.request('APIGateway', 'createUsagePlanKey', planKeyParams);
   sls.cli.log('Plan Key:', JSON.stringify(planKey, null, 2));
 
   const userAttributeParams = {
