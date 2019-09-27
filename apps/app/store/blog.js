@@ -39,8 +39,8 @@ export const actions = {
     return axios.get(`${apiUrl}/blog/get`)
       .then((response) => {
         const posts = []
-        for (let i = 0; i < response.data.Items.length; i++) {
-          const post = response.data.Items[i]
+        for (let i = 0; i < response.data.length; i++) {
+          const post = response.data[i]
           if (post.status !== 'Draft') {
             if (post.featuredImage) {
               post.bgStyle = `background-image: ${post.featuredImage}`
@@ -63,8 +63,8 @@ export const actions = {
     return axios.get(`${apiUrl}/blog/get`)
       .then((response) => {
         const posts = []
-        for (let i = 0; i < response.data.Items.length; i++) {
-          const post = response.data.Items[i]
+        for (let i = 0; i < response.data.length; i++) {
+          const post = response.data[i]
           if (post.featuredImage) {
             post.bgStyle = `background-image: ${post.featuredImage}`
           }
