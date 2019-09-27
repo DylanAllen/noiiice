@@ -1,13 +1,14 @@
 // Import your stylesheet with your variables first "$base, $primary, etc. so that they will cascade to the subsequent imports"
 // @import 'themes/rounded.scss';
 $darkTheme: false;
-@import 'themes/clean.scss';
-@import 'adminstyle.scss';
-
-@media (prefers-color-scheme: dark) {
-  $darkTheme: true;
+.default {
   @import 'themes/clean.scss';
   @import 'adminstyle.scss';
+  @media (prefers-color-scheme: dark) {
+    $darkTheme: true;
+    @import 'themes/clean.scss';
+    @import 'adminstyle.scss';
+  }
 }
 
 .clean {
