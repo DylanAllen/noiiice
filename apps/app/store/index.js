@@ -5,8 +5,8 @@ export const state = () => ({
   modalActive: false,
   modalData: null,
   fullWidth: false,
-  theme: 'clean',
-  themes: ['clean', 'cleandark', 'rounded', 'cards']
+  theme: 'default',
+  themes: ['default', 'clean', 'cleandark', 'rounded', 'cards']
 })
 
 export const mutations = {
