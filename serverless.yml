@@ -413,6 +413,7 @@ resources:
 
     UserPoolGroup:
       Type: "AWS::Cognito::UserPoolGroup"
+      DependsOn: UserPool
       Properties:
         GroupName: admin
         Description: "User with admin priveleges can create/modify posts and moderate comments"
@@ -525,6 +526,7 @@ resources:
 
     AdminUser:
       Type: AWS::Cognito::UserPoolUser
+      DependsOn: UserPoolGroup
       Properties:
         DesiredDeliveryMediums:
           - EMAIL

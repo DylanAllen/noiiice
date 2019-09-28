@@ -87,6 +87,7 @@ sw.*
 
 #Noiice Config
 secrets.json
+apps/app/config.js
 
 
 #Noiice lambda packages
