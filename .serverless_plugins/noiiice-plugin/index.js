@@ -1,7 +1,8 @@
 const packageLambdaFunctions = require('./package');
-const createAdminAPIKey = require("./createAdminAPIKey");
-const { findAndReplaceDependencies } = require("./lambdaUtils");
-const { addRoute53Record } = require("./route53Util");
+const createAdminAPIKey = require('./createAdminAPIKey');
+const { findAndReplaceDependencies } = require('./lambdaUtils');
+const { addRoute53Record } = require('./route53Util');
+const { verifyDomain, verifyEmail } = require('./sesUtil');
 const fs = require('fs');
 const secrets = require('../../secrets.json');
 
@@ -17,14 +18,21 @@ const createCertificate = async ({ sls, provider }) => {
     DomainName: domain,
     ValidationMethod: "DNS"
   };
-  const cert = await provider.request('ACM', 'requestCertificate', params);
+  let cert = {};
+  try {
+    cert = await provider.request('ACM', 'requestCertificate', params);
+  } catch (err) {
+    sls.cli.log('Error requesting certificate');
+    sls.cli.log(err);
+  }
+
 
   if (cert.CertificateArn) {
     console.log('Certificate created.');
     secrets[stage].certificateArn = cert.CertificateArn
   }
 
-  const addTagsToCertificate = (sls, domain, arn) => {
+  const addTagsToCertificate = async (sls, domain, arn) => {
     const params = {
       CertificateArn: arn,
       Tags: [
@@ -34,13 +42,26 @@ const createCertificate = async ({ sls, provider }) => {
         }
       ]
     };
-    return provider.request('ACM', 'addTagsToCertificate', params);
+    let addTags;
+    try {
+      addTags = await provider.request('ACM', 'addTagsToCertificate', params);
+    } catch(err) {
+      sls.cli.log('Error adding tags to Certificate');
+      sls.cli.log(err);
+    }
+    return addTags;
   };
 
   const describeCertificate = async (arnObj) => {
 
     const params = arnObj;
-    const cert = await provider.request('ACM', 'describeCertificate', params);
+    let cert = {};
+    try {
+      cert = await provider.request('ACM', 'describeCertificate', params);
+    } catch(err) {
+      sls.cli.log('Error describing certificate');
+      sls.cli.log(err);
+    }
     return cert;
   }
 
@@ -53,7 +74,8 @@ const createCertificate = async ({ sls, provider }) => {
     const describePromise = await new Promise((resolve, reject) => {
       const checkLoop = setInterval(async () => {
         const certDescription = await describeCertificate(descParams);
-        if (certDescription.Certificate.DomainValidationOptions[0].ResourceRecord) {
+
+        if ( certDescription.Certificate && certDescription.Certificate.DomainValidationOptions[0].ResourceRecord) {
           dnsRecord = certDescription.Certificate.DomainValidationOptions[0].ResourceRecord;
           validationData = certDescription.Certificate.DomainValidationOptions[0].ResourceRecord;
           stopLoop();
@@ -107,18 +129,52 @@ const createCertificate = async ({ sls, provider }) => {
 
   const verify = await verifyCertificate(sls, cert)
   sls.cli.log(JSON.stringify(verify));
+  const emails = await emailVerification(sls, provider);
 
-  return verify
+  return emails
 }
 
-const deleteMediaBucketContents = async ({ sls, provider}) => {
+const emailVerification = async (sls, provider) => {
+  const domain = sls.service.provider.config.domain;
+  const rootDomain = domain.substring(domain.indexOf('.')+1)
+  sls.cli.log('Verifying Domain');
+  const domainVerify =  await verifyDomain(sls, provider, rootDomain);
+  if (domainVerify !== 'verified') {
+    sls.cli.log('Route53 verification unavailable.')
+    const stage = sls.service.provider.stage;
+    secrets[stage].sesTxtRecord = domainVerify.VerificationToken;
+    const newSecrets = JSON.stringify(secrets, null, 2);
+    fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets)
+    sls.cli.log('TXT Record added to secrets.json')
+  }
+  sls.cli.log('Verifying email address');
+  const emailVerify = verifyEmail(sls, provider, sls.service.provider.config.adminUserEmail);
+  return Promise.all([
+    domainVerify,
+    emailVerify
+  ])
+}
+
+const verifyRootDomain = async (sls, provider) => {
+  const domain = sls.service.provider.config.domain;
+  const rootDomain = domain.substring(domain.indexOf('.')+1)
+  return await verifyDomain(sls, provider, rootDomain);
+}
+
+const deleteMediaBucketContents = async (sls, provider) => {
   const bucketName = sls.service.provider.config.mediaBucket;
   const params = {
     Bucket: bucketName,
     MaxKeys: 1000
   };
   sls.cli.log('Listing items in Media bucket');
-  const objects = await provider.request('s3', 'listObjects', params);
+  try{
+    const objects = await provider.request('S3', 'listObjects', params);
+  } catch(err) {
+    sls.cli.log(err);
+    return null
+  }
+
   if (objects.Contents) {
     const contents = objects.Contents;
     let keylist = {
@@ -135,7 +191,7 @@ const deleteMediaBucketContents = async ({ sls, provider}) => {
         Delete: keylist
       }
       sls.cli.log('Deleting items in media bucket');
-      const deleteAction = await provider.request('s3', 'deleteObjects', delParams);
+      const deleteAction = await provider.request('S3', 'deleteObjects', delParams);
       return deleteAction;
     }
     return null;
@@ -143,8 +199,8 @@ const deleteMediaBucketContents = async ({ sls, provider}) => {
 
 }
 
-const loadCfOutput = async (stackName, region, profile) => {
-  const response = await provider.request( 'cf', 'describeStacks', { StackName: stackName });
+const loadCfOutput = async (stackName, region, profile, provider) => {
+  const response = await provider.request( 'CloudFormation', 'describeStacks', { StackName: stackName });
   const outputs = response.Stacks[0].Outputs;
   let cfOut = {};
   outputs.forEach(o => {
@@ -155,9 +211,11 @@ const loadCfOutput = async (stackName, region, profile) => {
 
 const addCloudFrontRecord = async (sls, provider) => {
   const { stackName, region, profile } = sls.service.provider;
-  const cfOutputs = await loadCfOutput(stackName, region, profile);
+  sls.cli.log('Loading Cloudfront Outputs.');
+  const cfOutputs = await loadCfOutput(stackName, region, profile, provider);
   const domain = sls.service.provider.config.domain;
   const stage = sls.service.provider.stage;
+  sls.cli.log('Attempting to add CNAME to Route53.');
   const addRecord = await addRoute53Record(
     sls,
     provider,
@@ -219,15 +277,25 @@ class VerifyACMCertificate {
         options: {
           message: {}
         },
-      }
+      },
+      noiiiceVerifyEmail: {
+        usage: 'Verify admin email and domain in SES',
+        lifecycleEvents: [
+          'createCert'
+        ],
+        options: {
+          message: {}
+        },
+      },
     };
     this.hooks = {
       'before:package:initialize': packageLambdaFunctions.bind(this, serverless),
       'after:deploy:deploy': postDeployActions.bind(this, serverless, this.provider),
-      'before:remove:remove': deleteMediaBucketContents.bind(this, { sls: this.serverless, provider: this.provider }),
+      'before:remove:remove': deleteMediaBucketContents.bind(this, this.serverless, this.provider),
       'createCert:createCert': createCertificate.bind(this, { sls: this.serverless, provider: this.provider }),
       'postDeployActions:createAdminKey': postDeployActions.bind(this, serverless, this.provider),
-      'noiiceCreateAdminApiKey:createAdminKey': createAdminAPIKey.bind(this, serverless, this.provider)
+      'noiiceCreateAdminApiKey:createAdminKey': createAdminAPIKey.bind(this, serverless, this.provider),
+      'noiiiceVerifyEmail:createCert': emailVerification.bind(this, serverless, this.provider)
     };
   }
 }
