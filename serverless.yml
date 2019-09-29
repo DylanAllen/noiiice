@@ -91,7 +91,7 @@ functions:
         - "**/*"
       include:
         - nuxt.config.js
-        - nuxt.js
+        - nuxtHandler.js
         - index.js
         - package.json
         - secrets.json

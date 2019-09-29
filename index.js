@@ -1,6 +1,6 @@
 const serverless = require('serverless-http');
 const binaryMimeTypes = require('./binaryMimeTypes');
-const nuxt = require('./nuxt');
+const nuxt = require('./nuxtHandler');
 const handler = serverless(nuxt, {
     binary: binaryMimeTypes
 });
