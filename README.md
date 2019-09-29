@@ -94,7 +94,7 @@ Check your email for your admin user password, login to your app, and reset your
 
 ## Customize your site
 
-Navigate to your `apps/app/` after deployment and you can run your site locally:
+After deployment and you can run your site locally:
 
 ```bash
 npm run dev
@@ -104,7 +104,7 @@ This will start your dev server at http://localhost:3000 with hot reloading.
 
 The web app files are in `apps/app/` All of the CSS files are in the *assets* folder.
 
-You can redepoy the web app without a complete serverless deploy. You can do this by running:
+You can re-depoy the web app without a complete serverless deploy. You can do this by running:
 
 ```bash
 sls buildNuxtApp --stage dev
