@@ -40,20 +40,8 @@ const loadAppData = () => {
     });
 };
 
-const loadCfOutput = async (stackName, region, profile) => {
-  let credentials;
-  if (profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
-  const cf = new AWS.CloudFormation({ region });
-  const response = await cf.describeStacks({ StackName: stackName }).promise()
+const loadCfOutput = async (stackName, region, profile, provider) => {
+  const response = await provider.request('CloudFormation', 'describeStacks', { StackName: stackName })
   const outputs = response.Stacks[0].Outputs;
   outputs.forEach(o => {
       cfOutputs[o.OutputKey] = o.OutputValue;
@@ -114,21 +102,9 @@ const buildApps = (sls) => {
     }
 };
 
-const setIdpRoleDefault = async (sls) => {
-  let credentials;
-  if (sls.service.provider.profile) {
-    credentials = new AWS.SharedIniFileCredentials({profile: sls.service.provider.profile});
-  } else {
-    credentials = new AWS.RemoteCredentials({
-      httpOptions: { timeout: 5000 }, // 5 second timeout
-      maxRetries: 10, // retry 10 times
-      retryDelayOptions: { base: 200 }
-    })
-  }
-  AWS.config.credentials = credentials;
+const setIdpRoleDefault = async (sls, provider) => {
   const { IdentityPoolId, UserPoolId, UserPoolClientId, Region, AuthorizedRole } = cfOutputs;
   const identityProviderName = `cognito-idp.${Region}.amazonaws.com/${UserPoolId}:${UserPoolClientId}`;
-  const cognitoidentity = new AWS.CognitoIdentity({ region: Region });
 
   var params = {
     IdentityPoolId: IdentityPoolId,
@@ -143,7 +119,7 @@ const setIdpRoleDefault = async (sls) => {
     }
   };
 
-  const update = await cognitoidentity.setIdentityPoolRoles(params).promise();
+  const update = await provider.request('CognitoIdentity', 'setIdentityPoolRoles', params);
   sls.cli.log(update);
   return update
 }
@@ -156,10 +132,10 @@ const cleanupNodeModules = () => {
     }
 };
 
-const redeployNuxt = (sls) => {
+const redeployNuxt = (sls, provider) => {
   console.log();
   sls.cli.log('Setting Idp role for admin.');
-  setIdpRoleDefault(sls);
+  setIdpRoleDefault(sls, provider);
   sls.cli.log('Redeploying Nuxt lambda');
   if (sls.service.provider.profile) {
     runAppCmd(`serverless deploy function --function nuxt --stage ${sls.service.provider.stage} --profile ${sls.service.provider.profile}` , './');
@@ -170,26 +146,27 @@ const redeployNuxt = (sls) => {
   console.log();
 }
 
-const doWork = async (sls) => {
+const doWork = async (sls, provider) => {
     sls.cli.log('Building and deploying Noiiice ...');
     loadAppData();
-    await loadCfOutput(sls.service.provider.stackName, sls.service.provider.region, sls.service.provider.profile);
+    await loadCfOutput(sls.service.provider.stackName, sls.service.provider.region, sls.service.provider.profile, provider);
     performSubstitutions();
     writeChangesToDisk();
     buildApps(sls);
-    redeployNuxt(sls);
+    redeployNuxt(sls, provider);
     cleanupNodeModules();
 };
 
-const setIdpRoleHook = async (sls) => {
-  await loadCfOutput(sls.service.provider.stackName, sls.service.provider.region, sls.service.provider.profile);
+const setIdpRoleHook = async (sls, provider) => {
+  await loadCfOutput(sls.service.provider.stackName, sls.service.provider.region, sls.service.provider.profile, provider);
   sls.cli.log('Setting Idp role for admin.');
-  return setIdpRoleDefault(sls);
+  return setIdpRoleDefault(sls, provider);
 }
 
 class TaleBuildApps {
   constructor(serverless) {
     this.serverless = serverless;
+    this.provider = this.serverless.getProvider("aws")
     this.commands = {
       buildNuxtApp: {
         usage: 'Build Nuxt App',
@@ -220,10 +197,10 @@ class TaleBuildApps {
       }
     };
     this.hooks = {
-      "after:deploy:deploy": doWork.bind(this, serverless),
-      "buildNuxtApp:buildApps": doWork.bind(this, serverless),
-      "deployNuxt:buildApps": redeployNuxt.bind(this, serverless),
-      "setIdp:buildApps": setIdpRoleHook.bind(this, serverless)
+      "after:deploy:deploy": doWork.bind(this, serverless, this.provider),
+      "buildNuxtApp:buildApps": doWork.bind(this, serverless, this.provider),
+      "deployNuxt:buildApps": redeployNuxt.bind(this, serverless, this.provider),
+      "setIdp:buildApps": setIdpRoleHook.bind(this, serverless, this.provider)
     };
   }
 }
