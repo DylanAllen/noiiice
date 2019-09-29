@@ -88,9 +88,11 @@ const buildApps = (sls) => {
     const nuxtBuild = (app) => {
         console.log();
         sls.cli.log(`Noiice Nuxt: Building ... `);
-        runAppCmd(`export stage=${sls.service.provider.stage}`);
-        // runAppCmd(`export cdomain=${sls.service.custom.customDomain ? 'true' : 'false'}`);
-        runAppCmd('export cdomain=false');
+        if (process.platform !== 'win32') {
+          runAppCmd(`export stage=${sls.service.provider.stage}`);
+        } else {
+          runAppCmd(`set stage=${sls.service.provider.stage}`);
+        }
         runAppCmd('npm run build');
         console.log();
     };
