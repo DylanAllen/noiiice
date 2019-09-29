@@ -129,8 +129,10 @@ const setIdpRoleDefault = async (sls, provider) => {
 const cleanupNodeModules = () => {
     for (const app of apps) {
         console.log();
-        runAppCmd('rm -rf node_modules', app);
-        console.log();
+        if (process.platform !== 'win32') {
+          runAppCmd('rm -rf node_modules', app);
+          console.log();
+        }
     }
 };
 
