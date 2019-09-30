@@ -169,7 +169,7 @@ export default {
         return null
       }
 
-      let createdDate = created ? : created : new Date();
+      let createdDate = created ? created : new Date();
 
       const postdata = {
         title: title,
