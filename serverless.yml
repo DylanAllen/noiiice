@@ -326,293 +326,295 @@ functions:
           - "arn:aws:apigateway:#{AWS::Region}::/usageplans/*/keys"
 
 resources:
-  Resources:
-    BlogPostTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.config.blogPostDB}
-        AttributeDefinitions:
-        - AttributeName: uid
-          AttributeType: S
-        - AttributeName: slug
-          AttributeType: S
-        KeySchema:
-        - AttributeName: uid
-          KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
-        GlobalSecondaryIndexes:
-        - IndexName: slug
-          KeySchema:
+  - Conditions:
+      RegionalEndpoint:
+        Fn::Not:
+          - ${self:provider.region}
+          - us-east-1
+      EdgeEndpoint:
+        Fn::Equals:
+          - ${self:provider.region}
+          - us-east-1
+
+  - Resources:
+      BlogPostTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+          TableName: ${self:provider.config.blogPostDB}
+          AttributeDefinitions:
+          - AttributeName: uid
+            AttributeType: S
           - AttributeName: slug
+            AttributeType: S
+          KeySchema:
+          - AttributeName: uid
             KeyType: HASH
-          Projection:
-            NonKeyAttributes:
-            - uid
-            ProjectionType: INCLUDE
+          BillingMode: PAY_PER_REQUEST
+          GlobalSecondaryIndexes:
+          - IndexName: slug
+            KeySchema:
+            - AttributeName: slug
+              KeyType: HASH
+            Projection:
+              NonKeyAttributes:
+              - uid
+              ProjectionType: INCLUDE
 
-    CommentsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.config.blogCommentsDB}
-        AttributeDefinitions:
-        - AttributeName: postuid
-          AttributeType: S
-        - AttributeName: uid
-          AttributeType: S
-        KeySchema:
-        - AttributeName: postuid
-          KeyType: HASH
-        - AttributeName: uid
-          KeyType: RANGE
-        BillingMode: PAY_PER_REQUEST
+      CommentsTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+          TableName: ${self:provider.config.blogCommentsDB}
+          AttributeDefinitions:
+          - AttributeName: postuid
+            AttributeType: S
+          - AttributeName: uid
+            AttributeType: S
+          KeySchema:
+          - AttributeName: postuid
+            KeyType: HASH
+          - AttributeName: uid
+            KeyType: RANGE
+          BillingMode: PAY_PER_REQUEST
 
-    MediaBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        AccessControl: PublicRead
-        BucketName: ${self:provider.config.mediaBucket}
-        WebsiteConfiguration:
-          IndexDocument: index.html
-        CorsConfiguration:
-          CorsRules:
-            -
-              AllowedOrigins:
-                - '*'
-              AllowedHeaders:
-                - '*'
-              AllowedMethods:
-                - GET
-                - PUT
-                - POST
-                - DELETE
-                - HEAD
-              MaxAge: 3000
+      MediaBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+          AccessControl: PublicRead
+          BucketName: ${self:provider.config.mediaBucket}
+          WebsiteConfiguration:
+            IndexDocument: index.html
+          CorsConfiguration:
+            CorsRules:
+              -
+                AllowedOrigins:
+                  - '*'
+                AllowedHeaders:
+                  - '*'
+                AllowedMethods:
+                  - GET
+                  - PUT
+                  - POST
+                  - DELETE
+                  - HEAD
+                MaxAge: 3000
 
-    UserPool:
-      Type: "AWS::Cognito::UserPool"
-      Properties:
-        UserPoolName: ${self:provider.config.userPool}-${self:provider.stage}
-        AutoVerifiedAttributes:
-        - email
-        MfaConfiguration: "OFF"
-        Schema:
-        - Name: email
-          AttributeDataType: String
-          Mutable: false
-          Required: true
-        - Name: APIKey
-          AttributeDataType: String
-          Mutable: true
-          Required: false
-        LambdaConfig:
-          PostConfirmation: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-userConfirmation
-
-    UserPoolGroup:
-      Type: "AWS::Cognito::UserPoolGroup"
-      DependsOn: UserPool
-      Properties:
-        GroupName: admin
-        Description: "User with admin priveleges can create/modify posts and moderate comments"
-        Precedence: 0
-        UserPoolId:
-          Ref: UserPool
-        RoleArn: arn:aws:iam::#{AWS::AccountId}:role/${self:provider.config.userPool}-AdminRole-${self:provider.stage}
-
-    UserPoolClient:
-      Type: "AWS::Cognito::UserPoolClient"
-      Properties:
-        ClientName: ${self:provider.config.userPool}-client-${self:provider.stage}
-        GenerateSecret: false
-        UserPoolId:
-          Ref: UserPool
-
-    IdentityPool:
-      Type: "AWS::Cognito::IdentityPool"
-      Properties:
-        IdentityPoolName: ${self:provider.config.userPool}Identity${self:provider.stage}
-        AllowUnauthenticatedIdentities: false
-        CognitoIdentityProviders:
-        - ClientId:
-            Ref: UserPoolClient
-          ProviderName:
-            Fn::GetAtt: [UserPool, ProviderName]
-
-    CognitoAuthorizedRole:
-      Type: "AWS::IAM::Role"
-      Properties:
-        RoleName: ${self:provider.config.userPool}-AuthRole-${self:provider.stage}
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: "Allow"
-              Principal:
-                Federated: "cognito-identity.amazonaws.com"
-              Action:
-                - "sts:AssumeRoleWithWebIdentity"
-              Condition:
-                StringEquals:
-                  "cognito-identity.amazonaws.com:aud":
-                    Ref: IdentityPool
-                "ForAnyValue:StringLike":
-                  "cognito-identity.amazonaws.com:amr": authenticated
-        Policies:
-          - PolicyName: "CognitoAuthorizedPolicy"
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: "Allow"
-                  Action:
-                    - "cognito-sync:*"
-                    - "cognito-identity:*"
-                  Resource: "*"
-                - Effect: "Allow"
-                  Action:
-                    - "lambda:InvokeFunction"
-                  Resource:
-                    - ${self:custom.postActionsArn}
-
-    AdminUserRole:
-      Type: "AWS::IAM::Role"
-      Properties:
-        RoleName: ${self:provider.config.userPool}-AdminRole-${self:provider.stage}
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: "Allow"
-              Principal:
-                Federated: "cognito-identity.amazonaws.com"
-              Action:
-                - "sts:AssumeRoleWithWebIdentity"
-              Condition:
-                StringEquals:
-                  "cognito-identity.amazonaws.com:aud":
-                    Ref: IdentityPool
-                "ForAnyValue:StringLike":
-                  "cognito-identity.amazonaws.com:amr": authenticated
-        Policies:
-          - PolicyName: "AdminCognitoAuthorizedPolicy"
-            PolicyDocument:
-              Version: "2012-10-17"
-              Statement:
-                - Effect: "Allow"
-                  Action:
-                    - "cognito-sync:*"
-                    - "cognito-identity:*"
-                  Resource: "*"
-                - Effect: "Allow"
-                  Action:
-                    - "lambda:InvokeFunction"
-                  Resource:
-                    - ${self:custom.commentActionsArn}
-                    - ${self:custom.postActionsArn}
-                - Effect: "Allow"
-                  Action:
-                    - "s3:*"
-                  Resource: arn:aws:s3:::${self:provider.config.mediaBucket}/*
-
-
-    IdentityPoolRoleMapping:
-      Type: "AWS::Cognito::IdentityPoolRoleAttachment"
-      Properties:
-        IdentityPoolId:
-          Ref: IdentityPool
-        Roles:
-          authenticated:
-            Fn::GetAtt: [CognitoAuthorizedRole, Arn]
-
-    AdminUser:
-      Type: AWS::Cognito::UserPoolUser
-      DependsOn: UserPoolGroup
-      Properties:
-        DesiredDeliveryMediums:
-          - EMAIL
-        UserAttributes:
+      UserPool:
+        Type: "AWS::Cognito::UserPool"
+        Properties:
+          UserPoolName: ${self:provider.config.userPool}-${self:provider.stage}
+          AutoVerifiedAttributes:
+          - email
+          MfaConfiguration: "OFF"
+          Schema:
           - Name: email
-            Value: ${self:provider.config.adminUserEmail}
-        UserPoolId: ${self:resources.Outputs.UserPoolId.Value}
-        Username: ${self:provider.config.adminUser}
+            AttributeDataType: String
+            Mutable: false
+            Required: true
+          - Name: APIKey
+            AttributeDataType: String
+            Mutable: true
+            Required: false
+          LambdaConfig:
+            PostConfirmation: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-userConfirmation
 
-    AdminToGroup:
-      Type: AWS::Cognito::UserPoolUserToGroupAttachment
-      Properties:
-        GroupName: "admin"
-        UserPoolId:
+      UserPoolGroup:
+        Type: "AWS::Cognito::UserPoolGroup"
+        DependsOn: UserPool
+        Properties:
+          GroupName: admin
+          Description: "User with admin priveleges can create/modify posts and moderate comments"
+          Precedence: 0
+          UserPoolId:
+            Ref: UserPool
+          RoleArn: arn:aws:iam::#{AWS::AccountId}:role/${self:provider.config.userPool}-AdminRole-${self:provider.stage}
+
+      UserPoolClient:
+        Type: "AWS::Cognito::UserPoolClient"
+        Properties:
+          ClientName: ${self:provider.config.userPool}-client-${self:provider.stage}
+          GenerateSecret: false
+          UserPoolId:
+            Ref: UserPool
+
+      IdentityPool:
+        Type: "AWS::Cognito::IdentityPool"
+        Properties:
+          IdentityPoolName: ${self:provider.config.userPool}Identity${self:provider.stage}
+          AllowUnauthenticatedIdentities: false
+          CognitoIdentityProviders:
+          - ClientId:
+              Ref: UserPoolClient
+            ProviderName:
+              Fn::GetAtt: [UserPool, ProviderName]
+
+      CognitoAuthorizedRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+          RoleName: ${self:provider.config.userPool}-AuthRole-${self:provider.stage}
+          AssumeRolePolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Principal:
+                  Federated: "cognito-identity.amazonaws.com"
+                Action:
+                  - "sts:AssumeRoleWithWebIdentity"
+                Condition:
+                  StringEquals:
+                    "cognito-identity.amazonaws.com:aud":
+                      Ref: IdentityPool
+                  "ForAnyValue:StringLike":
+                    "cognito-identity.amazonaws.com:amr": authenticated
+          Policies:
+            - PolicyName: "CognitoAuthorizedPolicy"
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: "Allow"
+                    Action:
+                      - "cognito-sync:*"
+                      - "cognito-identity:*"
+                    Resource: "*"
+                  - Effect: "Allow"
+                    Action:
+                      - "lambda:InvokeFunction"
+                    Resource:
+                      - ${self:custom.postActionsArn}
+
+      AdminUserRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+          RoleName: ${self:provider.config.userPool}-AdminRole-${self:provider.stage}
+          AssumeRolePolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Principal:
+                  Federated: "cognito-identity.amazonaws.com"
+                Action:
+                  - "sts:AssumeRoleWithWebIdentity"
+                Condition:
+                  StringEquals:
+                    "cognito-identity.amazonaws.com:aud":
+                      Ref: IdentityPool
+                  "ForAnyValue:StringLike":
+                    "cognito-identity.amazonaws.com:amr": authenticated
+          Policies:
+            - PolicyName: "AdminCognitoAuthorizedPolicy"
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: "Allow"
+                    Action:
+                      - "cognito-sync:*"
+                      - "cognito-identity:*"
+                    Resource: "*"
+                  - Effect: "Allow"
+                    Action:
+                      - "lambda:InvokeFunction"
+                    Resource:
+                      - ${self:custom.commentActionsArn}
+                      - ${self:custom.postActionsArn}
+                  - Effect: "Allow"
+                    Action:
+                      - "s3:*"
+                    Resource: arn:aws:s3:::${self:provider.config.mediaBucket}/*
+
+
+      IdentityPoolRoleMapping:
+        Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+        Properties:
+          IdentityPoolId:
+            Ref: IdentityPool
+          Roles:
+            authenticated:
+              Fn::GetAtt: [CognitoAuthorizedRole, Arn]
+
+      AdminUser:
+        Type: AWS::Cognito::UserPoolUser
+        DependsOn: UserPoolGroup
+        Properties:
+          DesiredDeliveryMediums:
+            - EMAIL
+          UserAttributes:
+            - Name: email
+              Value: ${self:provider.config.adminUserEmail}
+          UserPoolId:
+            Ref: UserPool
+          Username: ${self:provider.config.adminUser}
+
+      AdminToGroup:
+        Type: AWS::Cognito::UserPoolUserToGroupAttachment
+        Properties:
+          GroupName: "admin"
+          UserPoolId:
+            Ref: UserPool
+          Username:
+            Ref: AdminUser
+        DependsOn: AdminUser
+
+      ApiGatewayAuthorizer:
+        DependsOn:
+          - ApiGatewayRestApi
+        Type: AWS::ApiGateway::Authorizer
+        Properties:
+          Name: cognito-authorizer
+          IdentitySource: method.request.header.Authorization
+          RestApiId:
+            Ref: ApiGatewayRestApi
+          Type: COGNITO_USER_POOLS
+          ProviderARNs:
+            - Fn::GetAtt: [UserPool, Arn]
+
+      ApiGatewayBasepathMapping:
+        Type: AWS::ApiGateway::BasePathMapping
+        DependsOn: [ ApiGatewayUsagePlanBlogUser, ApiGatewayCustomDomain ]
+        Properties:
+          BasePath: ''
+          DomainName: ${self:provider.config.domain}
+          RestApiId:
+            Ref: ApiGatewayRestApi
+          Stage: ${self:provider.stage}
+
+      UserConfirmationLambdaTriggerPolicy:
+        Type: AWS::Lambda::Permission
+        Properties:
+          Action: lambda:InvokeFunction
+          FunctionName:
+            Fn::GetAtt: [UserConfirmationLambdaFunction, Arn]
+          Principal: "cognito-idp.amazonaws.com"
+          SourceArn:
+            Fn::GetAtt: [UserPool, Arn]
+
+  - ${file(apigwDomain${self:provider.config.endpointType}.yml)}
+
+  - Outputs:
+      UserPoolId:
+        Value:
           Ref: UserPool
-        Username:
-          Ref: AdminUser
-      DependsOn: AdminUser
-
-    ApiGatewayAuthorizer:
-      DependsOn:
-        - ApiGatewayRestApi
-      Type: AWS::ApiGateway::Authorizer
-      Properties:
-        Name: cognito-authorizer
-        IdentitySource: method.request.header.Authorization
-        RestApiId:
-          Ref: ApiGatewayRestApi
-        Type: COGNITO_USER_POOLS
-        ProviderARNs:
-          - Fn::GetAtt: [UserPool, Arn]
-
-    ApiGatewayCustomDomain:
-      Type: AWS::ApiGateway::DomainName
-      DependsOn: ApiGatewayRestApi
-      Properties:
-        RegionalCertificateArn: ${self:provider.config.certificateArn}
-        CertificateArn: ${self:provider.config.certificateArn}
-        DomainName: ${self:provider.config.domain}
-        EndpointConfiguration:
-          Types:
-            - ${self:provider.config.endpointType}
-
-    ApiGatewayBasepathMapping:
-      Type: AWS::ApiGateway::BasePathMapping
-      DependsOn: [ ApiGatewayUsagePlanBlogUser, ApiGatewayCustomDomain ]
-      Properties:
-        BasePath: ''
-        DomainName: ${self:provider.config.domain}
-        RestApiId:
-          Ref: ApiGatewayRestApi
-        Stage: ${self:provider.stage}
-
-    UserConfirmationLambdaTriggerPolicy:
-      Type: AWS::Lambda::Permission
-      Properties:
-        Action: lambda:InvokeFunction
-        FunctionName:
-          Fn::GetAtt: [UserConfirmationLambdaFunction, Arn]
-        Principal: "cognito-idp.amazonaws.com"
-        SourceArn:
-          Fn::GetAtt: [UserPool, Arn]
-
-  Outputs:
-    UserPoolId:
-      Value:
-        Ref: UserPool
-    UserPoolClientId:
-      Value:
-        Ref: UserPoolClient
-    IdentityPoolId:
-      Value:
-        Ref: IdentityPool
-    AuthorizedRole:
-      Value:
-        Fn::GetAtt: [CognitoAuthorizedRole, Arn]
-    AdminUserRoleOut:
-      Value:
-        Ref: AdminUserRole
-    MediaBucket:
-      Value: ${self:provider.config.mediaBucket}
-    Stage:
-      Value: ${self:provider.stage}
-    Region:
-      Value: ${self:provider.config.region}
-    Domain:
-      Value: ${self:provider.config.domain}
-    UsagePlanId:
-      Value:
-        Ref: ApiGatewayUsagePlanBlogUser
-    AdminUsagePlanId:
-      Value:
-        Ref: ApiGatewayUsagePlanAdminUser
+      UserPoolClientId:
+        Value:
+          Ref: UserPoolClient
+      IdentityPoolId:
+        Value:
+          Ref: IdentityPool
+      AuthorizedRole:
+        Value:
+          Fn::GetAtt: [CognitoAuthorizedRole, Arn]
+      AdminUserRoleOut:
+        Value:
+          Ref: AdminUserRole
+      MediaBucket:
+        Value: ${self:provider.config.mediaBucket}
+      Stage:
+        Value: ${self:provider.stage}
+      Region:
+        Value: ${self:provider.config.region}
+      Domain:
+        Value: ${self:provider.config.domain}
+      UsagePlanId:
+        Value:
+          Ref: ApiGatewayUsagePlanBlogUser
+      AdminUsagePlanId:
+        Value:
+          Ref: ApiGatewayUsagePlanAdminUser
