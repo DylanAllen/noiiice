@@ -44,7 +44,7 @@
           <option>Published</option>
           <option>Hidden</option>
         </select>
-        <button id="publishbutton" class="button" @click="postBlog(editPost.title, $store.state.auth.username, editPost.content, editPost.status, editPost.excerpt, editPost.slug, editPost.featuredImage, editPost.uid)">
+        <button id="publishbutton" class="button" @click="postBlog(editPost.title, $store.state.auth.username, editPost.content, editPost.status, editPost.excerpt, editPost.slug, editPost.featuredImage, editPost.uid, editPost.created)">
           Publish Blog
         </button>
       </div>
@@ -158,7 +158,7 @@ export default {
     })
   },
   methods: {
-    postBlog(title, author, content, status, excerpt, slug, featuredImage, uid) {
+    postBlog(title, author, content, status, excerpt, slug, featuredImage, uid, created) {
       if (!title || !author || !content || !status) {
         alert('Please fill in all fields.')
         return null
@@ -169,7 +169,7 @@ export default {
         return null
       }
 
-      const created = new Date()
+      let createdDate = created ? : created : new Date();
 
       const postdata = {
         title: title,
