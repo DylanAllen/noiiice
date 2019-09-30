@@ -168,14 +168,15 @@ const deleteMediaBucketContents = async (sls, provider) => {
     MaxKeys: 1000
   };
   sls.cli.log('Listing items in Media bucket');
+  let objects;
   try{
-    const objects = await provider.request('S3', 'listObjects', params);
+    objects = await provider.request('S3', 'listObjects', params);
   } catch(err) {
     sls.cli.log(err);
     return null
   }
 
-  if (objects.Contents) {
+  if (objects && objects.Contents) {
     const contents = objects.Contents;
     let keylist = {
       Objects: [],
