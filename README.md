@@ -26,7 +26,7 @@ npm install
 
 Rename `example-secrets.json` file to `secrets.json` and update the values.
 
-- **region** - Your AWS region that you want to deploy the app into (us-east-1, us-west-2, etc.). Be aware that Cognito is not supported in all regions.
+- **region** - Your AWS region that you want to deploy the app into (us-east-1, us-west-2, etc.). Be aware that Cognito is not supported in all regions. `us-east-1` is recommended as it is currently the only region where API Gateway endpoint type EDGE is supported.
 - **blogCommentsDB & blogPostDB** - What you want to name your post and comment tables in DynamoDB.
 - **userPool** - A name for your Cognito user pool (can not contain dashes or spaces)
 - **adminUser** - A username for your admin user.
@@ -35,6 +35,7 @@ Rename `example-secrets.json` file to `secrets.json` and update the values.
 - **domain** - The domain for your website. You must have access to the DNS records for this domain.
 - **certificateArn** - This will be populated automatically after the certificate is created. If you already have a cert AWS Certificate Manager, you can enter the arn for that cert here and skip the `sls createCert --stage dev` step below. You will also have to verify that cert on your domain.
 - **restrictedStrings** - a comma separated list of string (no spaces between commas) of words that you do not want to be allowed in the comments of your blog. If one of these words are present in a comment, the application will not allow the comment to be created.
+- **endpointType** - Either `EDGE` or `REGIONAL`. This sets the API Gateway endpoint type. **EDGE will only work in the region us-east-1** while REGIONAL will work in any Region.
 
 
 ``` JSON
@@ -49,10 +50,11 @@ Rename `example-secrets.json` file to `secrets.json` and update the values.
     "mediaBucket": "noiicemediaDEV",
     "domain": "dev.yourdomain.com",
     "certificateArn":"",
-    "restrictedStrings": ""
+    "restrictedStrings": "",
+    "endpointType": "EDGE",
   },
   "prod": {
-    "region": "us-east-1",
+    "region": "us-west-2",
     "blogCommentsDB": "NoiiceComments",
     "blogPostDB": "NoiiceBlogPosts",
     "userPool": "NoiiceBlog",
@@ -61,7 +63,8 @@ Rename `example-secrets.json` file to `secrets.json` and update the values.
     "mediaBucket": "noiicemedia",
     "domain": "yourdomain.com",
     "certificateArn":"",
-    "restrictedStrings": ""
+    "restrictedStrings": "",
+    "endpointType": "REGIONAL",
   }
 }
 ```
