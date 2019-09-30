@@ -326,15 +326,6 @@ functions:
           - "arn:aws:apigateway:#{AWS::Region}::/usageplans/*/keys"
 
 resources:
-  - Conditions:
-      RegionalEndpoint:
-        Fn::Not:
-          - ${self:provider.region}
-          - us-east-1
-      EdgeEndpoint:
-        Fn::Equals:
-          - ${self:provider.region}
-          - us-east-1
 
   - Resources:
       BlogPostTable:

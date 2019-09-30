@@ -1,7 +1,6 @@
 Resources:
   ApiGatewayCustomDomain:
     Type: AWS::ApiGateway::DomainName
-    Condition: RegionalEndpoint
     DependsOn: ApiGatewayRestApi
     Properties:
       RegionalCertificateArn: ${self:provider.config.certificateArn}

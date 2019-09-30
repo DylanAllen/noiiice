@@ -1,7 +1,6 @@
 Resources:
   ApiGatewayCustomDomain:
     Type: AWS::ApiGateway::DomainName
-    Condition: EdgeEndpoint
     DependsOn: ApiGatewayRestApi
     Properties:
       CertificateArn: ${self:provider.config.certificateArn}
