@@ -13,6 +13,7 @@ plugins:
 
 provider:
   name: aws
+  endpointType: ${self:provider.config.endpointType}
   stage: ${opt:stage, 'dev'}
   profile: ${opt:profile, ''}
   secrets: ${file(secrets.json)}
@@ -62,11 +63,6 @@ custom:
       - '*/*'
   scriptHooks:
     before:package:createDeploymentArtifacts: lambda/pkg.js
-  customDomain: #Remove this configuration if you are not deploying a custom domain
-    domainName: ${self:provider.config.domain}
-    basePath: ''
-    stage: ${self:provider.stage}
-    createRoute53Record: true
   postActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-postActions
   commentActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-commentAction
   serverlessTerminationProtection:
@@ -561,16 +557,18 @@ resources:
 
     ApiGatewayCustomDomain:
       Type: AWS::ApiGateway::DomainName
+      DependsOn: ApiGatewayRestApi
       Properties:
+        RegionalCertificateArn: ${self:provider.config.certificateArn}
         CertificateArn: ${self:provider.config.certificateArn}
         DomainName: ${self:provider.config.domain}
         EndpointConfiguration:
           Types:
-            - EDGE
+            - ${self:provider.config.endpointType}
 
     ApiGatewayBasepathMapping:
       Type: AWS::ApiGateway::BasePathMapping
-      DependsOn: ApiGatewayCustomDomain
+      DependsOn: [ ApiGatewayUsagePlanBlogUser, ApiGatewayCustomDomain ]
       Properties:
         BasePath: ''
         DomainName: ${self:provider.config.domain}
@@ -618,6 +616,3 @@ resources:
     AdminUsagePlanId:
       Value:
         Ref: ApiGatewayUsagePlanAdminUser
-    CloudFrontDistribution:
-      Value:
-        Fn::GetAtt: [ApiGatewayCustomDomain, DistributionDomainName]
