@@ -34,7 +34,7 @@ const verifyCommentAction = (event) => {
   }
 
   return response;
-}
+};
 
 const generateID = () => {
   var d = new Date().getTime();
@@ -45,7 +45,7 @@ const generateID = () => {
   });
   console.log('uuid');
   return uuid;
-}
+};
 
 const sendEmail = async (data) => {
   const sesParams = {
@@ -73,11 +73,11 @@ const sendEmail = async (data) => {
       response = await ses.sendEmail(sesParams).promise();
   } catch(err) {
     console.log('SES Error');
-    console.log(JSON.stringify(err), null, 2));
-    return null
+    console.log(JSON.stringify(err, null, 2));
+    return null;
   }
-  return response
-}
+  return response;
+};
 
 const postComment = async (event) => {
 
@@ -139,7 +139,7 @@ const postComment = async (event) => {
   };
 
   return response;
-}
+};
 
 const updateComment = async (event) => {
 
@@ -185,7 +185,7 @@ const updateComment = async (event) => {
   };
 
   return response;
-}
+};
 
 const deleteComment = async (event) => {
   var dynamodb = new AWS.DynamoDB.DocumentClient();

@@ -168,6 +168,11 @@ functions:
           - dynamodb:BatchGetItem
           - dynamodb:UpdateItem
         Resource: arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:provider.config.blogCommentsDB}*
+      - Effect: "Allow"
+        Action:
+          - ses:SendEmail
+        Resource:
+          - arn:aws:ses:#{AWS::Region}:#{AWS::AccountId}:identity/*
     events:
       - http:
           path: /api/comment/post
