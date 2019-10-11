@@ -142,7 +142,7 @@ export const actions = {
     const monthNum = nowdate.toLocaleString('en-us', { month: '2-digit' })
     const year = nowdate.toLocaleString('en-us', { year: 'numeric' })
     const day = nowdate.toLocaleString('en-us', { day: '2-digit' })
-    const modified = `${year}-${monthNum}-${day}`
+    const today = `${year}-${monthNum}-${day}`
 
     const blogData = {
       title: title,
@@ -150,8 +150,8 @@ export const actions = {
       content: content,
       status: status,
       appclientid: rootState.auth.appclientid,
-      created: created,
-      modified: modified,
+      created: created !== '' ? created : today,
+      modified: today,
       excerpt: excerpt,
       featuredImage: featuredImage,
       slug: slug,
