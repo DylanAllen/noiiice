@@ -2,7 +2,7 @@
   <div id="blog">
     <h1>Blog</h1>
     <div class="blogcontainer">
-      <div v-for="(post, key) in content" :key="key" class="blogpost">
+      <div v-for="(post, key) in posts" :key="key" class="blogpost">
         <router-link :to="'/post/' + post.slug">
           <div v-if="post.featuredImage" class="imagecontainer" :style="{ backgroundImage: 'url(' + post.featuredImage + ')'}" />
           <div v-if="!post.featuredImage" class="imagecontainer nofeature" />
@@ -19,13 +19,13 @@
         </div>
       </div>
     </div>
-    <Paginator :per-page="5" :all-content="posts" @setPage="setPage($event)" />
+    <!-- <Paginator :per-page="5" :all-content="posts" @setPage="setPage($event)" /> -->
   </div>
 </template>
 
 <script>
 import { mapMutations } from 'vuex'
-import Paginator from '~/components/Paginator.vue'
+// import Paginator from '~/components/Paginator.vue'
 
 export default {
   name: 'Blog',
@@ -41,24 +41,21 @@ export default {
       ]
     }
   },
-  components: {
-    Paginator
-  },
+  // components: {
+  //   Paginator
+  // },
   data() {
     return {
       content: []
     }
   },
-  computed: {
-    posts() {
-      return this.$store.state.blog.posts.filter((post) => {
+  async asyncData({ store, getters }) {
+    if (!store.state.posts.length) {
+      const posts = await store.dispatch('blog/getPosts')
+      const filteredPosts = posts.filter((post) => {
         return post.status === 'Published'
       })
-    }
-  },
-  fetch({ store, params }) {
-    if (!store.state.posts.length) {
-      return store.dispatch('blog/getPosts')
+      return { posts: filteredPosts }
     }
   },
   methods: {
