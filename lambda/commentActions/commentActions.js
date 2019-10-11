@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const ses = new AWS.SES();
 
 const verifyCommentAction = (event) => {
   let body = new Buffer(event.body, 'base64').toString('ascii');
@@ -46,6 +47,38 @@ const generateID = () => {
   return uuid;
 }
 
+const sendEmail = async (data) => {
+  const sesParams = {
+    Destination: {
+      ToAddresses: [process.env.ADMINEMAIL]
+    },
+    Message: {
+      Subject: {
+        Data: `${process.env.DOMAIN} | New Comment from ${data.user} | Noiiice`
+      },
+      Body: {
+        Html: {
+          Data: `New comment on ${process.env.DOMAIN}.
+
+          From: ${data.user}
+          Comment: ${data.comment}`
+        }
+      }
+    },
+    Source: `noreply@${process.env.DOMAIN.substring(process.env.DOMAIN.indexOf('.')+1)}`
+  };
+
+  let response;
+  try {
+      response = await ses.sendEmail(sesParams).promise();
+  } catch(err) {
+    console.log('SES Error');
+    console.log(JSON.stringify(err), null, 2));
+    return null
+  }
+  return response
+}
+
 const postComment = async (event) => {
 
   const { body, admin, err } = verifyCommentAction(event);
@@ -85,15 +118,16 @@ const postComment = async (event) => {
     }
   };
 
-  const post = await dynamodb.put(params, (err, data) => {
-    if (err) {
-      console.log("Error", err);
-      return err;
-    } else {
-      console.log("Success", data);
-      return data;
-    }
-  }).promise();
+  let post;
+  try {
+    post = await dynamodb.put(params).promise();
+  } catch(err) {
+    console.log("Error", err);
+    return err;
+  }
+
+  console.log("Success", post);
+  await sendEmail({ user, comment });
 
   const response = {
     statusCode: 200,
@@ -106,8 +140,6 @@ const postComment = async (event) => {
 
   return response;
 }
-
-
 
 const updateComment = async (event) => {
 

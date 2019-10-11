@@ -20,6 +20,8 @@ const verifyDomain = async (sls, provider, domain) => {
     Domain: domain
   };
   let verify;
+  console.log('Verifying');
+
   try {
     verify = await provider.request('SES', 'verifyDomainIdentity', params);
   } catch (err) {
@@ -28,7 +30,7 @@ const verifyDomain = async (sls, provider, domain) => {
     return {};
   }
   try {
-    addRecord = await addRoute53Record(sls, provider, domain, '@', verify.VerificationToken, 'TXT');
+    addRecord = await addRoute53Record(sls, provider, domain, `_amazonses.${domain}`, `"${verify.VerificationToken}"`, 'TXT');
   } catch(err) {
     sls.cli.log('Error adding route53 TXT record for SES');
     sls.cli.log(err);
