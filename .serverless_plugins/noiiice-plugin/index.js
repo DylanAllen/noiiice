@@ -222,6 +222,7 @@ const addCloudFrontRecord = async (sls, provider) => {
   const domain = sls.service.provider.config.domain;
   const stage = sls.service.provider.stage;
   sls.cli.log('Attempting to add CNAME to Route53.');
+  const rootDomain = domain.substring(domain.indexOf('.')+1);
   const addRecord = await addRoute53Record(
     sls,
     provider,
