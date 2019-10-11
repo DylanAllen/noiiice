@@ -65,6 +65,9 @@ custom:
     before:package:createDeploymentArtifacts: lambda/pkg.js
   postActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-postActions
   commentActionsArn: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-commentAction
+  DomainEndpoint:
+    EDGE: DistributionDomainName
+    REGIONAL: RegionalDomainName
   serverlessTerminationProtection:
     stages:
       - prod
@@ -149,6 +152,9 @@ functions:
     runtime: nodejs8.10
     package:
       artifact: lambda/commentActions/commentActions.zip
+    environment:
+      DOMAIN: ${self:provider.config.domain}
+      ADMINEMAIL: ${self:provider.config.adminUserEmail}
     iamRoleStatementsName: NoiiceLambdaRoleCommentActions-${self:service}-${self:provider.stage}
     iamRoleStatements:
       - Effect: "Allow"
@@ -609,3 +615,8 @@ resources:
       AdminUsagePlanId:
         Value:
           Ref: ApiGatewayUsagePlanAdminUser
+      DomainEndpoint:
+        Value:
+          Fn::GetAtt:
+            - ApiGatewayCustomDomain
+            - ${self:custom.DomainEndpoint.${self:provider.config.endpointType}}

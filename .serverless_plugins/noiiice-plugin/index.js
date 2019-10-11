@@ -101,7 +101,7 @@ const createCertificate = async ({ sls, provider }) => {
     const route53Record = await addRoute53Record(
       sls,
       provider,
-      domain,
+      rootDomain,
       describePromise.Name,
       describePromise.Value,
       describePromise.Type
@@ -136,13 +136,18 @@ const createCertificate = async ({ sls, provider }) => {
 
 const emailVerification = async (sls, provider) => {
   const domain = sls.service.provider.config.domain;
-  const rootDomain = domain.substring(domain.indexOf('.')+1)
+  const rootDomain = domain.substring(domain.indexOf('.')+1);
   sls.cli.log('Verifying Domain');
+  console.log(rootDomain, domain);
   const domainVerify =  await verifyDomain(sls, provider, rootDomain);
   if (domainVerify !== 'verified') {
     sls.cli.log('Route53 verification unavailable.')
     const stage = sls.service.provider.stage;
-    secrets[stage].sesTxtRecord = domainVerify.VerificationToken;
+    secrets[stage].sesTxtRecord = {
+      Name: `_amazonses.${rootDomain}`,
+      Type: 'TXT',
+      Value: domainVerify.VerificationToken
+    };
     const newSecrets = JSON.stringify(secrets, null, 2);
     fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets)
     sls.cli.log('TXT Record added to secrets.json')
@@ -220,9 +225,9 @@ const addCloudFrontRecord = async (sls, provider) => {
   const addRecord = await addRoute53Record(
     sls,
     provider,
+    rootDomain,
     domain,
-    domain,
-    cfOutputs.CloudFrontDistribution,
+    cfOutputs.DomainEndpoint,
     'CNAME'
   );
   console.log()
@@ -231,7 +236,7 @@ const addCloudFrontRecord = async (sls, provider) => {
     secrets[stage].cloudFrontCNAME = {
       Name: domain,
       Type: 'CNAME',
-      Value: cfOutputs.CloudFrontDistribution
+      Value: cfOutputs.DomainEndpoint
     };
     const newSecrets = JSON.stringify(secrets, null, 2);
     return fs.writeFileSync(__dirname + '/../../secrets.json', newSecrets);

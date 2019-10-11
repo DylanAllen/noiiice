@@ -6,7 +6,7 @@ const addRoute53Record = async (sls, provider, domain, name, value, type) => {
   let hostedZoneId = null;
   const zones = hostedZones.HostedZones;
   for (zone in zones) {
-    if (zones[zone].Name === `${rootDomain}.`) {
+    if (zones[zone].Name === `${domain}.`) {
       hostedZoneId = zones[zone].Id;
     }
   }
@@ -42,7 +42,8 @@ const addRoute53Record = async (sls, provider, domain, name, value, type) => {
   try {
     record = await provider.request('Route53', 'changeResourceRecordSets', params53);
   } catch (err) {
-    sls.cli.log(err);
+    sls.cli.log('Error adding Route53 Record')
+    sls.cli.log(JSON.stringif(err, null, 2));
     record = null
   }
   return record
