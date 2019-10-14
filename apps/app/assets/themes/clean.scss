@@ -194,7 +194,7 @@ select {
 
     button {
       cursor: pointer;
-      color: #ffffff;
+      color: $base;
       background-color: $primary;
       padding: 10px 50px;
       margin-top: 20px;
@@ -1193,6 +1193,13 @@ footer {
 
   .paginator {
     text-align: center;
+    .plink {
+      cursor: pointer;
+      &:hover, &.active {
+        color: $accentTwo;
+      }
+
+    }
     .pnext, .pprev {
       background-image: $downArrow;
       height: 31px;
@@ -1202,9 +1209,17 @@ footer {
       background-position: center center;
       background-size: contain;
       transform: rotate(-90deg);
+      transition: all 0.3s ease;
+      &:hover {
+        color: transparent;
+        transform: scale(1.5) rotate(-90deg);
+      }
     }
     .pprev {
       transform: rotate(90deg);
+      &:hover {
+        transform: scale(1.5) rotate(90deg);
+      }
     }
   }
 
