@@ -21,7 +21,7 @@
         </p>
         <p>
           But this is a blog platform, so creating blog posts is the easy part. You can use markdown or HTML in the built in web interface for writing, publishing, and editing your posts.
-          If you want to create and edit pages (like this one) you will have to edit the code and deploy your changes. Once you ahve the site up and running, a re-deploy can be done with one command.
+          If you want to create and edit pages (like this one) you will have to edit the code and deploy your changes. Once you have the site up and running, a re-deploy can be done with one command.
         </p>
       </div>
     </section>
