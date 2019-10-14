@@ -620,6 +620,8 @@ resources:
       AdminUsagePlanId:
         Value:
           Ref: ApiGatewayUsagePlanAdminUser
+      GoogleAnalyticsID:
+        Value: ${self:provider.config.googleAnalyticsID}
       DomainEndpoint:
         Value:
           Fn::GetAtt:

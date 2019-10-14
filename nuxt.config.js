@@ -37,7 +37,8 @@ module.exports = {
   ** Plugins to load before mounting the App
   */
   plugins: [
-    { src: '@plugins/cognitoAuth', ssr: false }
+    { src: '@plugins/cognitoAuth', ssr: false },
+    { src: '~plugins/ga.js', ssr: false }
   ],
 
   /*

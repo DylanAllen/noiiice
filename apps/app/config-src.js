@@ -8,5 +8,6 @@ module.exports.env = {
   domain: '%CF:Domain%',
   domainApiUrl: 'https://%CF:Domain%/api',
   serviceUrl: '%CF:ServiceEndpoint%/api',
-  apiUrl: this.domain ? this.domainApiUrl : this.serviceUrl
+  apiUrl: this.domain ? this.domainApiUrl : this.serviceUrl,
+  googleAnalyticsID: '%CF:GoogleAnalyticsID%'
 }

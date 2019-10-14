@@ -36,6 +36,7 @@ Rename `example-secrets.json` file to `secrets.json` and update the values.
 - **certificateArn** - This will be populated automatically after the certificate is created. If you already have a cert AWS Certificate Manager, you can enter the arn for that cert here and skip the `sls createCert --stage dev` step below. You will also have to verify that cert on your domain.
 - **restrictedStrings** - a comma separated list of string (no spaces between commas) of words that you do not want to be allowed in the comments of your blog. If one of these words are present in a comment, the application will not allow the comment to be created.
 - **endpointType** - Either `EDGE` or `REGIONAL`. This sets the API Gateway endpoint type. **EDGE will only work in the region us-east-1** while REGIONAL will work in any Region.
+- **googleAnalyticsID** - If you want to add Google Analytics to your site, enter the ID here. If you do not, set this value to a blank string `"googleAnalyticsID": ""` and the GA scripts will not run.
 
 
 ``` JSON
@@ -52,6 +53,7 @@ Rename `example-secrets.json` file to `secrets.json` and update the values.
     "certificateArn":"",
     "restrictedStrings": "",
     "endpointType": "EDGE",
+    "googleAnalyticsID": "UA-XXXXXXXX-X"
   },
   "prod": {
     "region": "us-west-2",
@@ -65,6 +67,7 @@ Rename `example-secrets.json` file to `secrets.json` and update the values.
     "certificateArn":"",
     "restrictedStrings": "",
     "endpointType": "REGIONAL",
+    "googleAnalyticsID": "UA-XXXXXXXX-X"
   }
 }
 ```
