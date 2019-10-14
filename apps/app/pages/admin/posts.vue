@@ -128,7 +128,7 @@ export default {
     posts() {
       const posts = this.$store.state.blog.allPosts.map((post) => {
         const date = new Date(post.created)
-        post.createdDate = `${date.getMonth() + 1}/${date.getDay() + 1}/${date.getFullYear()}`
+        post.createdDate = `${date.getMonth() + 1}/${date.getDate() + 1}/${date.getFullYear()}`
         return post
       })
       return posts

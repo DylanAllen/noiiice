@@ -12,7 +12,8 @@ export const state = () => ({
   },
   comments: [],
   activePostSlug: null,
-  media: null
+  media: null,
+  paginator: {}
 })
 
 export const mutations = {
@@ -41,6 +42,8 @@ export const actions = {
         const posts = []
         for (let i = 0; i < response.data.length; i++) {
           const post = response.data[i]
+          post.created = new Date(post.created).valueOf()
+          post.modified = new Date(post.modified).valueOf()
           if (post.status !== 'Draft') {
             if (post.featuredImage) {
               post.bgStyle = `background-image: ${post.featuredImage}`
@@ -65,6 +68,8 @@ export const actions = {
         const posts = []
         for (let i = 0; i < response.data.length; i++) {
           const post = response.data[i]
+          post.created = new Date(post.created).valueOf()
+          post.modified = new Date(post.modified).valueOf()
           if (post.featuredImage) {
             post.bgStyle = `background-image: ${post.featuredImage}`
           }
@@ -138,11 +143,7 @@ export const actions = {
       return null
     }
 
-    const nowdate = new Date()
-    const monthNum = nowdate.toLocaleString('en-us', { month: '2-digit' })
-    const year = nowdate.toLocaleString('en-us', { year: 'numeric' })
-    const day = nowdate.toLocaleString('en-us', { day: '2-digit' })
-    const today = `${year}-${monthNum}-${day}`
+    const today = Date.now()
 
     const blogData = {
       title: title,
