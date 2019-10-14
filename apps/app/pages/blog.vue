@@ -2,7 +2,7 @@
   <div id="blog">
     <h1>Blog</h1>
     <div class="blogcontainer">
-      <div v-for="(post, key) in posts" :key="key" class="blogpost">
+      <div v-for="(post, key) in page" :key="key" class="blogpost">
         <router-link :to="'/post/' + post.slug">
           <div v-if="post.featuredImage" class="imagecontainer" :style="{ backgroundImage: 'url(' + post.featuredImage + ')'}" />
           <div v-if="!post.featuredImage" class="imagecontainer nofeature" />
@@ -19,13 +19,22 @@
         </div>
       </div>
     </div>
-    <!-- <Paginator :per-page="5" :all-content="posts" @setPage="setPage($event)" /> -->
+    <div class="paginator">
+      <span class="plink pprev" @click="prevPage()">
+        Prev
+      </span>
+      <span v-for="(page, key) in pages" :key="key" :class="(key == currentPage) ? 'active plink' : 'plink'" @click="setPage(key)">
+        {{ key + 1 }}
+      </span>
+      <span class="plink pnext" @click="nextPage()">
+        Next
+      </span>
+    </div>
   </div>
 </template>
 
 <script>
 import { mapMutations } from 'vuex'
-// import Paginator from '~/components/Paginator.vue'
 
 export default {
   name: 'Blog',
@@ -41,29 +50,61 @@ export default {
       ]
     }
   },
-  // components: {
-  //   Paginator
-  // },
   data() {
     return {
       content: []
     }
   },
-  async asyncData({ store, getters }) {
-    if (!store.state.posts.length) {
-      const posts = await store.dispatch('blog/getPosts')
-      const filteredPosts = posts.filter((post) => {
-        return post.status === 'Published'
-      })
-      return { posts: filteredPosts }
+  async asyncData({ store }) {
+    if (!store.state.blog.posts.length) {
+      console.log('getting posts') // eslint-disable-line
+      await store.dispatch('blog/getPosts')
+      console.log('got posts')  // eslint-disable-line
+    }
+    console.log('Initializing paginator') // eslint-disable-line
+    const paginatorParams = {
+      id: 'blog',
+      data: {
+        content: store.state.blog.posts,
+        perPage: 5,
+        class: 'onpage'
+      }
+    }
+    await store.dispatch('paginator/initPaginator', paginatorParams)
+    const data = store.state.paginator.data.blog
+    return {
+      page: data.page,
+      pages: data.pages,
+      currentPage: data.currentPage
     }
   },
   methods: {
     ...mapMutations({
       getPosts: 'blog/getPosts'
     }),
-    setPage(e) {
-      this.content = e.content
+    setPage(pagenum) {
+      if (pagenum === this.currentPage) {
+        return null
+      }
+      this.$store.dispatch('paginator/setPage', { id: 'blog', page: pagenum })
+      this.updatePagination()
+    },
+    async nextPage() {
+      const turn = await this.$store.dispatch('paginator/nextPage', 'blog')
+      if (turn) {
+        this.updatePagination()
+      }
+    },
+    async prevPage() {
+      const turn = await this.$store.dispatch('paginator/prevPage', 'blog')
+      console.log(turn) //eslint-disable-line
+      if (turn) {
+        this.updatePagination()
+      }
+    },
+    updatePagination() {
+      this.page = this.$store.state.paginator.data.blog.page
+      this.currentPage = this.$store.state.paginator.data.blog.currentPage
       window.scrollTo(0, 0)
     }
   }
