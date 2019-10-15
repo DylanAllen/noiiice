@@ -90,7 +90,7 @@ export const actions = {
     if (!slug) {
       const post = {
         content: '',
-        status: '',
+        status: 'Draft',
         created: '',
         category: '',
         slug: '',

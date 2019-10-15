@@ -3,7 +3,7 @@
     <div class="filecontainer">
       <input id="fileinput" type="file" name="upload" @change="uploadIt()">
       <button class="browse-btn" @click="selectFile()">
-        Browse Files
+        Browse
       </button>
       <span class="file-info">Upload a file</span>
     </div>

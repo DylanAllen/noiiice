@@ -82,12 +82,28 @@
     label {
       display: block;
       font-family: 'Nanum Myeongjo', 'Open Sans', Helvetica, Arial, sans-serif;
-      font-size: 16px;
+      font-size: 18px;
       margin-bottom: 7px;
       margin-top: 20px;
     }
     input {
       display: block;
+    }
+  }
+  .righteditor {
+    padding: 10px;
+    label {
+      display: block;
+      font-family: 'Nanum Myeongjo', 'Open Sans', Helvetica, Arial, sans-serif;
+      font-size: 18px;
+      margin-bottom: 7px;
+      margin-top: 20px;
+    }
+  }
+  .mediabuttons {
+    text-align: right;
+    .filecontainer {
+      float: right;
     }
   }
   .featuredimagecontainer {
@@ -276,10 +292,10 @@
 //
 .uploadcomponent {
   .filecontainer {
-    margin: 2em 0;
+    margin: 1em 0 2em 0;
     max-width: 300px;
-    background-color: #EDEDED;
-    border: 1px solid #DFDFDF;
+    background-color: $base;
+    border: 1px solid $lightbase;
     border-radius: 5px;
   }
   input[type='file'] {
@@ -287,12 +303,13 @@
   }
   .file-info {
     font-size: 0.9em;
+    padding-right: 5px;
   }
   button {
     background: #ffffff;
     font-size: 20px;
     border: 1px solid #eaeaea;
-    padding: 10px 26px;
+    padding: 10px 32px;
   }
   .browse-btn:hover {
     background: #4ec0b4;

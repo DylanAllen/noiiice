@@ -15,28 +15,33 @@
             :class="validslug ? '' : 'invalid'"
             @change="validateSlug()"
           >
-          <label>featured image</label>
-          <input id="featuredimage" v-model="editPost.featuredImage" name="imageinput" placeholder="https://lexikitchen.s3.amazonaws.com/lexikitchen/example.png">
           <label>content</label>
           <textarea id="contentinput" v-model="editPost.content" :class="stickymode ? 'sticky' : ''" name="contentinput" placeholder="Enter body markdown content here..." />
-          <button class="button" @click="showMedia = !showMedia">
-            Media Browser
-          </button>
-          <Uploader />
           <h3>excerpt</h3>
           <textarea id="excerptinput" v-model="editPost.excerpt" name="excerpt" placeholder="A short intro that will display in metadata..." />
         </div>
-        <transition name="fade" mode="out-in">
-          <div v-if="editPost.content" id="previewcontainer" :class="prevmode ? 'prevmode' : ''">
-            <div class="previewinner">
-              <h1>{{ editPost.title }}</h1>
-              <div class="featuredimagecontainer">
-                <img :src="editPost.featuredImage ? editPost.featuredImage : ''">
-              </div>
-              <Markdown :content="editPost.content" />
-            </div>
+
+        <div class="righteditor">
+          <label>featured image</label>
+          <input id="featuredimage" v-model="editPost.featuredImage" name="imageinput" placeholder="Image url...">
+          <div class="mediabuttons">
+            <button class="button" @click="showMedia = !showMedia">
+              Media Browser
+            </button>
+            <Uploader />
           </div>
-        </transition>
+          <transition name="fade" mode="out-in">
+            <div v-if="editPost.content" id="previewcontainer" :class="prevmode ? 'prevmode' : ''">
+              <div class="previewinner">
+                <h1>{{ editPost.title }}</h1>
+                <div class="featuredimagecontainer">
+                  <img :src="editPost.featuredImage ? editPost.featuredImage : ''">
+                </div>
+                <Markdown :content="editPost.content" />
+              </div>
+            </div>
+          </transition>
+        </div>
       </div>
       <div class="buttonscontainer">
         <select v-model="editPost.status" class="statusbutton">
