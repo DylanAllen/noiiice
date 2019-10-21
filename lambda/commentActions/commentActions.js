@@ -58,10 +58,15 @@ const sendEmail = async (data) => {
       },
       Body: {
         Html: {
-          Data: `New comment on ${process.env.DOMAIN}.
-
-          From: ${data.user}
-          Comment: ${data.comment}`
+          Data: `New comment on ${process.env.DOMAIN}.<br/>
+          <br/>
+          From: ${data.user}<br/>
+          Email: ${data.email}<br/>
+          Post: ${data.title}<br/>
+          Comment: ${data.comment}<br/><br/>
+          <a href="https://${process.env.DOMAIN}/post/${data.slug}">View Post</a><br/>
+          <a href="https://${process.env.DOMAIN}/admin/comments">Comment Admin Page</a>
+          `
         }
       }
     },
@@ -127,7 +132,8 @@ const postComment = async (event) => {
   }
 
   console.log("Success", post);
-  await sendEmail({ user, comment });
+  const email = event.requestContext.authorizer.claims.email;
+  await sendEmail({ user, comment, title, email, slug });
 
   const response = {
     statusCode: 200,
