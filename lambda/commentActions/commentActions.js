@@ -64,8 +64,12 @@ const sendEmail = async (data) => {
           Email: ${data.email}<br/>
           Post: ${data.title}<br/>
           Comment: ${data.comment}<br/><br/>
+<<<<<<< HEAD
           <a href="https://${process.env.DOMAIN}/post/${data.slug}">View Post</a><br/>
           <a href="https://${process.env.DOMAIN}/admin/comments">Comment Admin Page</a>
+=======
+          <a href="https://${process.env.DOMAIN}/post/${data.slug}">View Post</a>
+>>>>>>> 6a97d0d67aeebb7d33ff7771ea5defa0618f6f19
           `
         }
       }
