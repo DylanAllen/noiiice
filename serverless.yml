@@ -97,6 +97,7 @@ functions:
         - binaryMimeTypes.js
         - apps/app/config.js
         - .nuxt/**
+        - apps/app/static/**
 
     layers:
       # - arn:aws:lambda:us-east-1:378603488134:layer:NoiiiceStaticLayer:2
