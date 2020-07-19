@@ -4,7 +4,7 @@
     <div class="blogcontainer">
       <div v-for="(post, key) in page" :key="key" class="blogpost">
         <router-link :to="'/post/' + post.slug">
-          <div v-if="post.featuredImage" class="imagecontainer" :style="{ backgroundImage: 'url(' + post.featuredImage + ')'}" />
+          <div v-if="post.featuredImage" :style="{ backgroundImage: 'url(' + post.featuredImage + ')'}" class="imagecontainer" />
           <div v-if="!post.featuredImage" class="imagecontainer nofeature" />
         </router-link>
         <div class="post-text">
@@ -20,13 +20,13 @@
       </div>
     </div>
     <div class="paginator">
-      <span class="plink pprev" @click="prevPage()">
+      <span @click="prevPage()" class="plink pprev">
         Prev
       </span>
       <span v-for="(page, key) in pages" :key="key" :class="(key == currentPage) ? 'active plink' : 'plink'" @click="setPage(key)">
         {{ key + 1 }}
       </span>
-      <span class="plink pnext" @click="nextPage()">
+      <span @click="nextPage()" class="plink pnext">
         Next
       </span>
     </div>

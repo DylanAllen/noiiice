@@ -1,8 +1,8 @@
 <template>
   <div class="uploadcomponent">
     <div class="filecontainer">
-      <input id="fileinput" type="file" name="upload" @change="uploadIt()">
-      <button class="browse-btn" @click="selectFile()">
+      <input id="fileinput" type="file" name="upload">
+      <button @click="selectFile()" class="browse-btn">
         Browse
       </button>
       <span class="file-info">Upload a file</span>

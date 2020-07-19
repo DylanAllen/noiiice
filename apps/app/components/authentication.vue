@@ -1,6 +1,6 @@
 <template>
   <div id="authenticator">
-    <div v-if="!loggedIn && !loading" id="authcontainer">
+    <div id="authcontainer" v-if="!loggedIn && !loading">
       <h2 v-if="!this.$store.state.blog.auth">
         {{ formHeader }}
       </h2>
@@ -14,7 +14,7 @@
       </div>
       <div v-if="confirmed" class="pwcontainer">
         <label>Password</label>
-        <input v-model="currentPassword" type="password" placeholder="Password" @keyup.enter="onLogin()">
+        <input @keyup.enter="onLogin()" v-model="currentPassword" type="password" placeholder="Password">
       </div>
       <div v-if="changePass" class="npwcontainer">
         <label>New Password</label>
@@ -59,7 +59,7 @@
       <p>{{ errorMessage }}</p>
     </div>
     <div v-if="!confirmed" class="resendContainer">
-      <p class="resendlink" @click="onSendConfirmation()">
+      <p @click="onSendConfirmation()" class="resendlink">
         Resend confirmation code
       </p>
     </div>

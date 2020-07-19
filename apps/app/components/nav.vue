@@ -19,7 +19,7 @@
         <router-link v-if="!$store.state.auth.auth" to="/login">
           Login
         </router-link>
-        <a v-if="$store.state.auth.auth" id="signoutButton" href="/" @click="onLogout()">
+        <a id="signoutButton" v-if="$store.state.auth.auth" @click="onLogout()" href="/">
           Logout
         </a>
         <div class="themeSwitcher">

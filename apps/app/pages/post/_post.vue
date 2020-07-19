@@ -12,7 +12,7 @@
         <div class="commentsContainer">
           <div v-for="(comment, key) in comments" :key="key" class="comment">
             <div class="deleteContainer">
-              <div v-if="$store.state.auth.admin || $store.state.auth.username === comment.user" class="deleteComment" @click="deleteComment({ uid: comment.uid, postuid: comment.postuid })">
+              <div v-if="$store.state.auth.admin || $store.state.auth.username === comment.user" @click="deleteComment({ uid: comment.uid, postuid: comment.postuid })" class="deleteComment">
                 X
               </div>
             </div>
@@ -25,7 +25,7 @@
           </div>
         </div>
         <Comments />
-        <nuxt-link v-if="$store.state.auth.admin" id="edit-button" class="button secondary" :to="'/edit/' + activePost.slug">
+        <nuxt-link id="edit-button" v-if="$store.state.auth.admin" :to="'/edit/' + activePost.slug" class="button secondary">
           Edit Post
         </nuxt-link>
       </div>

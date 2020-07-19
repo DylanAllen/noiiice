@@ -9,11 +9,11 @@
           <label>url slug</label>
           <input
             id="sluginput"
+            @change="validateSlug()"
             v-model="editPost.slug"
+            :class="validslug ? '' : 'invalid'"
             name="sluginput"
             placeholder="URL slug for post..."
-            :class="validslug ? '' : 'invalid'"
-            @change="validateSlug()"
           >
           <label>content</label>
           <textarea id="contentinput" v-model="editPost.content" :class="stickymode ? 'sticky' : ''" name="contentinput" placeholder="Enter body markdown content here..." />
@@ -25,13 +25,13 @@
           <label>featured image</label>
           <input id="featuredimage" v-model="editPost.featuredImage" name="imageinput" placeholder="Image url...">
           <div class="mediabuttons">
-            <button class="button" @click="showMedia = !showMedia">
+            <button @click="showMedia = !showMedia" class="button">
               Media Browser
             </button>
             <Uploader />
           </div>
           <transition name="fade" mode="out-in">
-            <div v-if="editPost.content" id="previewcontainer" :class="prevmode ? 'prevmode' : ''">
+            <div id="previewcontainer" v-if="editPost.content" :class="prevmode ? 'prevmode' : ''">
               <div class="previewinner">
                 <h1>{{ editPost.title }}</h1>
                 <div class="featuredimagecontainer">
@@ -49,23 +49,23 @@
           <option>Published</option>
           <option>Hidden</option>
         </select>
-        <button id="publishbutton" class="button" @click="postBlog(editPost.title, $store.state.auth.username, editPost.content, editPost.status, editPost.excerpt, editPost.slug, editPost.featuredImage, editPost.uid, editPost.created)">
+        <button id="publishbutton" @click="postBlog(editPost.title, $store.state.auth.username, editPost.content, editPost.status, editPost.excerpt, editPost.slug, editPost.featuredImage, editPost.uid, editPost.created)" class="button">
           Publish Blog
         </button>
       </div>
       <transition name="fade" mode="out-in">
         <div v-if="showMedia" class="mediamodal">
-          <div class="mediaCloser" @click="showMedia = false">
+          <div @click="showMedia = false" class="mediaCloser">
             X
           </div>
           <Media :parentmodal="closeModal" />
         </div>
       </transition>
       <div class="floatingbuttons">
-        <button v-if="editPost.content" class="button previewbutton" @click="previewMode()">
+        <button v-if="editPost.content" @click="previewMode()" class="button previewbutton">
           {{ previewLabel }}
         </button>
-        <button class="button previewbutton stickyButton" @click="stickyEditor()">
+        <button @click="stickyEditor()" class="button previewbutton stickyButton">
           {{ stickyLabel }}
         </button>
       </div>

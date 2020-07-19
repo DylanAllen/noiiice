@@ -3,7 +3,7 @@
   <div class="commentsComponent">
     <div v-if="$store.state.auth.auth" class="commentsForm">
       <textarea v-model="newComment" class="comment-textarea" maxlength="500" />
-      <button class="button" @click="postComment()">
+      <button @click="postComment()" class="button">
         Post Comment
       </button>
     </div>

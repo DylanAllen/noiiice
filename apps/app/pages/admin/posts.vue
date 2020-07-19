@@ -83,17 +83,17 @@
             </div>
             <div class="actionsrow">
               <div class="viewComment">
-                <router-link class="button" :to="'/post/' + post.slug">
+                <router-link :to="'/post/' + post.slug" class="button">
                   VIEW
                 </router-link>
               </div>
               <div class="editComment">
-                <router-link class="button" :to="'/edit/' + post.slug">
+                <router-link :to="'/edit/' + post.slug" class="button">
                   EDIT
                 </router-link>
               </div>
               <div class="deleteComment">
-                <button class="button" @click="deletePost(post.uid)">
+                <button @click="deletePost(post.uid)" class="button">
                   DELETE
                 </button>
               </div>

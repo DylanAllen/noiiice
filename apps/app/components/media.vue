@@ -10,9 +10,9 @@
       <div v-for="(file, key) in $store.state.blog.media" :key="key" class="mediadiv">
         <h3>{{ file.filename }}</h3>
         <div
-          class="imagecontainer"
           :style="'background-image:url(https://' + bucket + '.s3.amazonaws.com/' + file.Key + ')'"
           @click="lightBoxImage(key)"
+          class="imagecontainer"
         />
         <p class="clickurl">
           <span @click="copyUrl(file.url, false, false)">URL</span> | <span @click="copyUrl(file.url, true, false)">img tag</span>
@@ -20,19 +20,19 @@
       </div>
     </div>
     <div v-if="modal" class="lightbox">
-      <div class="lightboxcloser" @click="closeModal()">
+      <div @click="closeModal()" class="lightboxcloser">
         X
       </div>
       <div class="modalinner">
         <img :src="lightBoxUrl" @click="closeModal()">
         <div class="copycontainer">
-          <button class="button" @click="copyUrl(lightBoxUrl, false, true)">
+          <button @click="copyUrl(lightBoxUrl, false, true)" class="button">
             Copy URL
           </button>
-          <button class="button" @click="copyUrl(lightBoxUrl, true, true)">
+          <button @click="copyUrl(lightBoxUrl, true, true)" class="button">
             Copy img tag
           </button>
-          <button class="button delete" @click="deleteImage(lightBoxUrl)">
+          <button @click="deleteImage(lightBoxUrl)" class="button delete">
             Delete File
           </button>
         </div>

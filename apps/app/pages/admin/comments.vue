@@ -42,7 +42,7 @@
           </div>
           <div v-for="(comment, key) in currentComments" :key="key" class="commentcontainer">
             <div class="status">
-              <select v-model="commentStatuses[comment.uid]" class="commentstatusselect" @change="updateComment(comment)">
+              <select @change="updateComment(comment)" v-model="commentStatuses[comment.uid]" class="commentstatusselect">
                 <option value="approved">
                   Approved
                 </option>
@@ -87,7 +87,7 @@
                 Status:
               </div>
               <div class="status">
-                <select v-model="commentStatuses[comment.uid]" class="commentstatusselect" @change="updateComment(comment)">
+                <select @change="updateComment(comment)" v-model="commentStatuses[comment.uid]" class="commentstatusselect">
                   <option value="approved">
                     Approved
                   </option>
@@ -136,7 +136,7 @@
             </div>
             <div class="commentrow actionsrow">
               <div class="deleteComment">
-                <button class="button" @click="deleteComment({ uid: comment.uid, postuid: comment.postuid })">
+                <button @click="deleteComment({ uid: comment.uid, postuid: comment.postuid })" class="button">
                   DELETE
                 </button>
               </div>

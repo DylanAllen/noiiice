@@ -1,12 +1,12 @@
 <template>
   <div class="paginator">
-    <span class="plink pprev" @click="prevPage()">
+    <span @click="prevPage()" class="plink pprev">
       Prev
     </span>
     <span v-for="(page, key) in pages" :key="key" :class="(key == currentPage) ? 'active plink' : 'plink'" @click="setPage(key)">
       {{ key + 1 }}
     </span>
-    <span class="plink pnext" @click="nextPage()">
+    <span @click="nextPage()" class="plink pnext">
       Next
     </span>
   </div>
