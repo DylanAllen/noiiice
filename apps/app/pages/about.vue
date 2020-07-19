@@ -44,7 +44,7 @@ export default {
   name: 'About',
   head() {
     return {
-      title: `About Noiice Blog | A Serverless Blog by Dylan Allen`,
+      title: 'About Noiice Blog | A Serverless Blog by Dylan Allen',
       meta: [
         {
           hid: 'description',

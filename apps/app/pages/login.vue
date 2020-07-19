@@ -14,7 +14,7 @@ export default {
   },
   head() {
     return {
-      title: `Login | Noiice Blog`,
+      title: 'Login | Noiice Blog',
       meta: [
         // hid is used as unique identifier. Do not use `vmid` for it as it will not work
         { hid: 'description', name: 'description', content: 'Noiice Blog is a serverless blog developed by Dylan Allen. It is built on AWS services, Nuxt, and irrational exuberance' }

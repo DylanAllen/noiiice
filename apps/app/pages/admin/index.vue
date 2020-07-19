@@ -25,7 +25,7 @@ export default {
   mixins: [auth],
   head() {
     return {
-      title: `Noiiice Admin`,
+      title: 'Noiiice Admin',
       meta: [
         // hid is used as unique identifier. Do not use `vmid` for it as it will not work
         { hid: 'description', name: 'description', content: 'Noiice Blog is a serverless blog developed by Dylan Allen. It is built on AWS services, Nuxt, and irrational exuberance' }

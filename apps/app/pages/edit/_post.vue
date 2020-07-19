@@ -88,7 +88,7 @@ export default {
   },
   head() {
     return {
-      title: `Create/Edit Post | Noiice Blog | A Serverless Blog by Dylan Allen`,
+      title: 'Create/Edit Post | Noiice Blog | A Serverless Blog by Dylan Allen',
       meta: [
         // hid is used as unique identifier. Do not use `vmid` for it as it will not work
         { hid: 'description', name: 'description', content: 'Noiice Blog is a serverless blog developed by Dylan Allen. It is built on AWS services, Nuxt, and irrational exuberance' }
@@ -99,7 +99,7 @@ export default {
   data() {
     return {
       title: '',
-      content: ``,
+      content: '',
       author: this.$store.state.username,
       excerpt: '',
       status: 'Draft',

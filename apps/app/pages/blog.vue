@@ -40,7 +40,7 @@ export default {
   name: 'Blog',
   head() {
     return {
-      title: `Noiice Blog`,
+      title: 'Noiice Blog',
       meta: [
         {
           hid: 'description',
