@@ -3,7 +3,7 @@
     <div :class="'container ' + (fullwidth ? fullwidth : '')">
       <div class="header-logo-container">
         <router-link to="/">
-          <img src="~/assets/noiiice-logo-light.png" class="logo">
+          <img src="~/assets/noiiice-logo-light.png" class="logo" alt="Noiiice Logo">
         </router-link>
       </div>
       <div class="sitetitle">

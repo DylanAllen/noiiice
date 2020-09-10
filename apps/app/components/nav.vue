@@ -25,10 +25,10 @@
         <div class="themeSwitcher">
           <hr>
           <p>
-            Preview an installed theme
+            <label for="themeSelect">Preview an installed theme</label>
           </p>
           <div>
-            <select v-model="theme" @change="setTheme()">
+            <select id="themeSelect" v-model="theme" @change="setTheme()">
               <option v-for="(themeName, key) in $store.state.themes" :key="key">
                 {{ themeName }}
               </option>

@@ -18,6 +18,7 @@
       <a
         href="https://nuxtjs.org/"
         target="_blank"
+        rel="noopener"
         class="button--green"
       >
         Nuxt Docs
@@ -26,6 +27,7 @@
       <a
         href="https://github.com/DylanAllen/noiiice"
         target="_blank"
+        rel="noopener"
         class="button--grey"
       >
         GitHub
