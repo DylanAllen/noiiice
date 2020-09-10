@@ -49,6 +49,7 @@ module.exports = {
     '@nuxtjs/axios',
     '@nuxtjs/pwa'
   ],
+  devModules: ['@nuxtjs/eslint-module'],
   /*
   ** Axios module configuration
   */

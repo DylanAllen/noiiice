@@ -21,6 +21,7 @@
     "highlightjs": "^9.12.0",
     "marked": "^0.7.0",
     "nuxt-start": "^2.9.0",
-    "serverless-http": "^2.0.2"
+    "serverless-http": "^2.0.2",
+    "vue-client-only": "^2.0.0"
   }
 }

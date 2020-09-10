@@ -79,7 +79,7 @@ layers:
     path: layers
     description: 'Node modules for Noiiice Blog'
     compatibleRuntimes: # optional, a list of runtimes this layer is compatible with
-      - nodejs8.10
+      - nodejs12.x
     retain: false
 
 functions:
@@ -108,7 +108,7 @@ functions:
 
   postActions:
     handler: postActions.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/postActions/postActions.zip
     iamRoleStatementsName: NoiiceLambdaRolePostActions-${self:service}-${self:provider.stage}
@@ -150,7 +150,7 @@ functions:
 
   commentActions:
     handler: commentActions.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/commentActions/commentActions.zip
     environment:
@@ -207,7 +207,7 @@ functions:
 
   getBlogPosts:
     handler: getBlogPosts.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/getBlogPosts/getBlogPosts.zip
     iamRoleStatementsName: NoiiceLambdaRoleGetBlog-${self:service}-${self:provider.stage}
@@ -228,7 +228,7 @@ functions:
 
   getComments:
     handler: getComments.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/getComments/getComments.zip
     iamRoleStatementsName: NoiiceLambdaRoleGetComments-${self:service}-${self:provider.stage}
@@ -261,7 +261,7 @@ functions:
 
   upload:
     handler: upload.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/upload/upload.zip
     iamRoleStatementsName: NoiiceLambdaRoleUpload-${self:service}-${self:provider.stage}
@@ -290,7 +290,7 @@ functions:
               Ref: ApiGatewayAuthorizer
   setup:
     handler: setup.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/setup/setup.zip
     iamRoleStatementsName: NoiiceLambdaRoleSetup-${self:service}-${self:provider.stage}
@@ -316,7 +316,7 @@ functions:
 
   userConfirmation:
     handler: userConfirmation.handler
-    runtime: nodejs8.10
+    runtime: nodejs12.x
     package:
       artifact: lambda/userConfirmation/userConfirmation.zip
     iamRoleStatementsName: NoiiceLambdaUserConfirmation-${self:service}-${self:provider.stage}

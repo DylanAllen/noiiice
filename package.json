@@ -26,10 +26,12 @@
     "marked": "^0.7.0",
     "nuxt": "^2.9.0",
     "nuxt-start": "^2.9.0",
-    "serverless-http": "^2.0.2"
+    "serverless-http": "^2.0.2",
+    "vue-client-only": "^2.0.0"
   },
   "devDependencies": {
     "@nuxtjs/eslint-config": "^0.0.1",
+    "@nuxtjs/eslint-module": "^2.0.0",
     "aws-sdk": "^2.455.0",
     "babel-eslint": "^10.0.1",
     "eslint": "^5.15.1",
