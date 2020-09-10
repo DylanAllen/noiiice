@@ -73,12 +73,6 @@ const runAppCmd = (cmd, app) => {
 };
 
 const buildApps = (sls) => {
-    const installDeps = (app) => {
-        console.log();
-        sls.cli.log(`${app}: Installing dependencies from package-lock ... `);
-        runAppCmd('npm ci', app);
-        console.log();
-    };
     const installLayerDeps = () => {
       console.log();
       sls.cli.log(`Lambda Layer: Installing dependencies from package-lock ... `);
@@ -98,7 +92,6 @@ const buildApps = (sls) => {
     };
 
     for (const app of apps) {
-        installDeps(app);
         installLayerDeps();
         nuxtBuild(app);
     }
