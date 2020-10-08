@@ -3,7 +3,6 @@
 </template>
 
 <script>
-// import marked from 'marked'
 import hljs from 'highlightjs'
 
 const MarkdownIt = require('markdown-it')()

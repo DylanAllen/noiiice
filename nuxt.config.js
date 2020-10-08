@@ -29,8 +29,9 @@ module.exports = {
   ** Global CSS
   */
   css: [
-    { src: '~/assets/style.scss', lang: 'sass'},
-    { src: 'highlightjs/styles/atom-one-dark.css', lang: 'css'}
+    { src: '~/assets/style.scss', lang: 'sass' },
+    { src: 'highlightjs/styles/atom-one-dark.css', lang: 'css' },
+    { src: 'katex/dist/katex.min.css', lang: 'css' }
   ],
 
   /*
