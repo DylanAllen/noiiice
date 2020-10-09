@@ -3,8 +3,10 @@
 </template>
 
 <script>
-import marked from 'marked'
 import hljs from 'highlightjs'
+
+const MarkdownIt = require('markdown-it')()
+const MarkdownItKatex = require('@iktakahiro/markdown-it-katex')
 
 export default {
   name: 'Markdown',
@@ -19,7 +21,7 @@ export default {
     contentOut() {
       try {
         console.log('Generating markdown') // eslint-disable-line
-        return marked(this.content)
+        return MarkdownIt.render(this.content)
       } catch (error) {
         console.log(error) // eslint-disable-line
         return error
@@ -28,9 +30,14 @@ export default {
   },
   created() {
     // this.dompurify = new CreateDOMPurify()
-    console.log('setting marked options') // eslint-disable-line
-    marked.setOptions({
+    console.log('setting markdown-it options') // eslint-disable-line
+    MarkdownIt.set({
+      html: true,
+      xhtmlOut: false,
       breaks: true,
+      linkify: true,
+      typographer: false,
+      quotes: '“”‘’',
       langPrefix: 'hljs ',
       highlight: (code, lang) => {
         try {
@@ -38,6 +45,14 @@ export default {
         } catch (error) {
           return hljs.highlightAuto(code).value
         }
+      }
+    })
+    MarkdownIt.use(MarkdownItKatex, {
+      throwOnError: true,
+      errorColor: '#cc0000',
+      displayMode: true,
+      macros: {
+        '\\RR': '\\mathbb{R}'
       }
     })
   }
