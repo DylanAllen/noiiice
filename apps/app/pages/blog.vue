@@ -59,9 +59,7 @@ export default {
     if (!store.state.blog.posts.length) {
       console.log('getting posts') // eslint-disable-line
       await store.dispatch('blog/getPosts')
-      console.log('got posts')  // eslint-disable-line
     }
-    console.log('Initializing paginator') // eslint-disable-line
     const paginatorParams = {
       id: 'blog',
       data: {

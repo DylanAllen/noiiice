@@ -1,6 +1,6 @@
 {
   "name": "noiiice",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A blog built on Nuxt, AWS DynamoDB, and AWS Lambda",
   "author": "Dylan Allen",
   "private": true,

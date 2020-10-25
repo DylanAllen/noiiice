@@ -5,6 +5,22 @@ const { addRoute53Record } = require('./route53Util');
 const { verifyDomain, verifyEmail } = require('./sesUtil');
 const fs = require('fs');
 const secrets = require('../../secrets.json');
+const execSync = require('child_process').execSync;
+
+const runAppCmd = (cmd, app) => {
+  execSync(cmd, {
+      cwd: app,
+      stdio: 'inherit'
+  })
+};
+
+const packageAll = (sls) => {
+  console.log();
+  sls.cli.log(`Lambda Layer: Installing dependencies from package-lock ... `);
+  runAppCmd('npm ci', 'layers/nodejs');
+  console.log();
+  packageLambdaFunctions(sls);
+}
 
 const createCertificate = async ({ sls, provider }) => {
   sls.cli.log('Creating certificate')
@@ -296,7 +312,7 @@ class VerifyACMCertificate {
       },
     };
     this.hooks = {
-      'before:package:initialize': packageLambdaFunctions.bind(this, serverless),
+      'before:package:initialize': packageAll.bind(this, serverless),
       'after:deploy:deploy': postDeployActions.bind(this, serverless, this.provider),
       'before:remove:remove': deleteMediaBucketContents.bind(this, this.serverless, this.provider),
       'createCert:createCert': createCertificate.bind(this, { sls: this.serverless, provider: this.provider }),

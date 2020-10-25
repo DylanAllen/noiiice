@@ -95,7 +95,7 @@ const postComment = async (event) => {
   }
 
   var dynamodb = new AWS.DynamoDB.DocumentClient();
-  const { title, slug, comment, created, user, uid, cuid } = body;
+  const { title, slug, comment, created, user, uid } = body;
   let { status } = body;
 
   if (!admin) {
